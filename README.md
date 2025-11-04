@@ -428,12 +428,51 @@ const double COMPRESSION_LEVEL = 0.0;  // 0.0=Speed, 0.5=Balanced, 1.0=Memory
 
 ## Performance Tuning
 
-### For WT-HALI
+### WT-HALI Configuration Guide (Based on Systematic Experiments)
 
-1. **Tune Compression Level:** Adjust `compression_level` (0.0-1.0) for memory/performance tradeoff
-2. **Write-Through Buffer Size:** Experiment with merge thresholds (1%-10% of main index)
-3. **Expert Count Scaling:** Modify `sqrt(n)/100` scaling factor for different dataset sizes
-4. **Linearity Thresholds:** Adjust R² cutoffs in `select_expert_type()` (wt_hali_index.h)
+**50 experimental configurations tested** across compression levels, buffer sizes, and dataset sizes.
+
+#### Optimal Compression Levels by Dataset Size
+
+| Dataset Size | Optimal Compression | Lookup Latency | Throughput | Memory |
+|--------------|---------------------|----------------|------------|---------|
+| 100K keys | 0.50 (Balanced) | 98.2 ns | 7.5 M ops/sec | 18.50 bytes/key |
+| 500K keys | 0.25 (Light) | 128.2 ns | 12.1 M ops/sec | 17.75 bytes/key |
+| 1M keys | 0.25 (Light) | 190.5 ns | 10.1 M ops/sec | 17.75 bytes/key |
+
+**Key Insight:** Medium compression (0.25) performs best for production workloads (500K-1M keys).
+
+#### Optimal Buffer Sizes by Workload Type
+
+| Workload | Optimal Buffer | Lookup Latency | Throughput |
+|----------|----------------|----------------|------------|
+| Read-Heavy (>90% reads) | 5.0% | 162.2 ns | 7.8 M ops/sec |
+| Mixed (50/50) | 0.5% | 250.5 ns | 7.5 M ops/sec |
+| Write-Heavy (>50% writes) | 5.0% | 302.1 ns | 10.0 M ops/sec |
+
+**Key Insight:** Larger buffers (5%) benefit write-heavy and read-heavy workloads; mixed workloads prefer minimal buffers (0.5%).
+
+#### Automatic Configuration
+
+Use the built-in configuration selector for optimal performance:
+
+```cpp
+#include "wt_hali_config_selector.h"
+
+// Automatic configuration based on dataset size and workload
+auto config = WTHALIConfigSelector::get_optimal_config(
+    500'000,        // Expected dataset size
+    "mixed",        // Workload type: "read_heavy", "mixed", or "write_heavy"
+    "clustered"     // Optional: data distribution hint
+);
+
+auto index = std::make_unique<HALIv2Index<uint64_t, uint64_t>>(
+    config.compression_level,
+    config.buffer_size_percent
+);
+```
+
+See [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md) for full experimental analysis.
 
 ### For RMI
 
@@ -459,9 +498,9 @@ See [`results/RESULTS.md#caveats-and-limitations`](results/RESULTS.md#caveats-an
 ### High Priority (Next Steps)
 
 1. **Add ALEX Baseline:** Integrate ALEX for competitive comparison with other updatable learned indexes
-2. **WT Buffer Size Experiments:** Systematically evaluate impact of buffer size (1%, 5%, 10%) on performance
-3. **Large-Scale Benchmarks:** Test on 1M-10M key datasets for production validation
-4. **Fix WT-HALI-Balanced Edge Case:** Resolve clustered data validation failure
+2. **Large-Scale Benchmarks:** Test on 5M-10M key datasets for extreme scale validation
+3. **Fix WT-HALI-Balanced Edge Case:** Resolve clustered data validation failure
+4. **Real-World Data:** Benchmark on SOSD datasets (books, fb, osmc, wiki)
 
 ### Medium Priority
 
@@ -477,7 +516,7 @@ See [`results/RESULTS.md#caveats-and-limitations`](results/RESULTS.md#caveats-an
 3. **Dynamic Rebalancing:** Monitor write distribution and adapt expert boundaries
 4. **Hardware Acceleration:** SIMD vectorization, GPU-accelerated model training
 
-### Completed (Phase 1 & 2)
+### Completed (Phase 1, 2 & 3)
 
 - ✅ WT-HALI production implementation with write-through buffer
 - ✅ Guaranteed-correct binary search routing (no fallback overhead)
@@ -485,6 +524,10 @@ See [`results/RESULTS.md#caveats-and-limitations`](results/RESULTS.md#caveats-an
 - ✅ Three tunable configurations (Speed/Balanced/Memory)
 - ✅ 100% correctness validation for WT-HALI-Speed and WT-HALI-Memory
 - ✅ Production-scale benchmarks (500K keys)
+- ✅ **Systematic hyperparameter experiments (50 configurations tested)**
+- ✅ **Optimal compression level determination by dataset size**
+- ✅ **Optimal buffer size determination by workload type**
+- ✅ **Automatic configuration selector implementation**
 
 ## Contributing
 
