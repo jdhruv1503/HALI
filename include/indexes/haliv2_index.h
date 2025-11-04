@@ -260,8 +260,9 @@ private:
     size_t total_size_ = 0;
 
 public:
-    HALIv2Index(double compression_level = 0.5) {
+    HALIv2Index(double compression_level = 0.5, double merge_threshold = 0.01) {
         config_.compression_level = compression_level;
+        config_.merge_threshold = merge_threshold;
     }
 
     bool insert(const KeyType& key, const ValueType& value) override {

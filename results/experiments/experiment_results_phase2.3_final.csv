@@ -1,0 +1,6 @@
+name,compression_level,buffer_size,dataset_type,dataset_size,workload_type,num_operations,build_ms,bytes_per_key,lookup_ns,insert_ops_sec,elapsed_seconds
+exp2.3_scaling_100k,0.0,0.01,clustered,100000,mixed,100000,16.29,18.94,156.6,10623515.0,0.05596160888671875
+exp2.3_scaling_250k,0.0,0.01,clustered,250000,mixed,100000,39.87,19.0,214.0,9895275.0,0.09456562995910645
+exp2.3_scaling_500k,0.0,0.01,clustered,500000,mixed,100000,79.85,18.98,221.9,10794580.0,0.15011000633239746
+exp2.3_scaling_750k,0.0,0.01,clustered,750000,mixed,100000,97.91,18.05,149.5,11666447.0,0.1774616241455078
+exp2.3_scaling_1000k,0.0,0.01,clustered,1000000,mixed,100000,169.3,19.0,397.2,7455287.0,0.2961890697479248

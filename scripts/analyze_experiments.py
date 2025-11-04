@@ -6,8 +6,15 @@ Analyze results and determine optimal configurations
 
 import json
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+    PLOTTING_AVAILABLE = True
+except ImportError:
+    PLOTTING_AVAILABLE = False
+    print("Warning: matplotlib not available, skipping visualizations")
+
 from pathlib import Path
 from typing import Dict, List
 import numpy as np
@@ -248,17 +255,31 @@ public:
             aggfunc='mean'
         )
 
-        plt.figure(figsize=(10, 6))
-        sns.heatmap(pivot, annot=True, fmt='.1f', cmap='RdYlGn_r')
-        plt.title('Lookup Latency (ns): Compression Level vs Dataset Size')
-        plt.xlabel('Dataset Size')
-        plt.ylabel('Compression Level')
-        plt.tight_layout()
+        if PLOTTING_AVAILABLE:
+            plt.figure(figsize=(10, 6))
+            im = plt.imshow(pivot.values, cmap='RdYlGn_r', aspect='auto')
+            plt.colorbar(im, label='Lookup Latency (ns)')
 
-        output_file = self.output_dir / 'compression_heatmap.png'
-        plt.savefig(output_file, dpi=300)
-        print(f"\n[PLOT] Saved: {output_file}")
-        plt.close()
+            # Add text annotations
+            for i in range(len(pivot)):
+                for j in range(len(pivot.columns)):
+                    plt.text(j, i, f'{pivot.iloc[i, j]:.1f}',
+                            ha="center", va="center", color="black", fontsize=8)
+
+            plt.xticks(range(len(pivot.columns)), pivot.columns)
+            plt.yticks(range(len(pivot)), pivot.index)
+            plt.title('Lookup Latency (ns): Compression Level vs Dataset Size')
+            plt.xlabel('Dataset Size')
+            plt.ylabel('Compression Level')
+            plt.tight_layout()
+        else:
+            print(f"Skipping heatmap (matplotlib not available)")
+
+        if PLOTTING_AVAILABLE:
+            output_file = self.output_dir / 'compression_heatmap.png'
+            plt.savefig(output_file, dpi=300)
+            print(f"\n[PLOT] Saved: {output_file}")
+            plt.close()
 
     def _plot_buffer_impact(self, df: pd.DataFrame):
         """Plot buffer size impact on performance"""

@@ -303,6 +303,8 @@ def main():
                        help='Path to simulator executable')
     parser.add_argument('--limit', type=int, default=None,
                        help='Limit number of experiments to run')
+    parser.add_argument('--yes', '-y', action='store_true',
+                       help='Skip confirmation prompt')
 
     args = parser.parse_args()
 
@@ -328,11 +330,14 @@ def main():
             print(f"{exp.name}: {exp.to_args()}")
         return
 
-    # Confirm before running
-    response = input(f"Run {len(experiments)} experiments? (yes/no): ")
-    if response.lower() not in ['yes', 'y']:
-        print("Aborted.")
-        return
+    # Confirm before running (unless --yes flag is set)
+    if not args.yes:
+        response = input(f"Run {len(experiments)} experiments? (yes/no): ")
+        if response.lower() not in ['yes', 'y']:
+            print("Aborted.")
+            return
+    else:
+        print(f"Proceeding with {len(experiments)} experiments...")
 
     # Run experiments
     results = []

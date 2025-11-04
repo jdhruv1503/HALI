@@ -172,42 +172,86 @@ void export_to_csv(const std::vector<BenchmarkResults>& all_results,
     std::cout << "\nResults exported to: " << filename << std::endl;
 }
 
+/**
+ * @brief Parse command-line argument (e.g., --key=value)
+ */
+std::string parse_arg(int argc, char* argv[], const std::string& key, const std::string& default_val) {
+    for (int i = 1; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg.find(key + "=") == 0) {
+            return arg.substr(key.length() + 1);
+        }
+    }
+    return default_val;
+}
+
+double parse_arg_double(int argc, char* argv[], const std::string& key, double default_val) {
+    std::string val = parse_arg(argc, argv, key, "");
+    if (val.empty()) return default_val;
+    return std::stod(val);
+}
+
+size_t parse_arg_size(int argc, char* argv[], const std::string& key, size_t default_val) {
+    std::string val = parse_arg(argc, argv, key, "");
+    if (val.empty()) return default_val;
+    return std::stoull(val);
+}
+
 int main(int argc, char* argv[]) {
     std::cout << "===========================================\n";
-    std::cout << "  HALI: Hierarchical Adaptive Learned Index\n";
-    std::cout << "  Benchmark Suite\n";
+    std::cout << "  WT-HALI: Write-Through HALI\n";
+    std::cout << "  Experimental Benchmark Runner\n";
     std::cout << "===========================================\n\n";
 
-    // Configuration
-    size_t dataset_size = 1000000; // 1M keys for quick testing
-    size_t num_operations = 100000; // 100K operations per workload
-
-    if (argc > 1) {
-        dataset_size = std::stoull(argv[1]);
-    }
-    if (argc > 2) {
-        num_operations = std::stoull(argv[2]);
-    }
+    // Parse command-line arguments
+    double compression_level = parse_arg_double(argc, argv, "--compression", 0.5);
+    double buffer_size = parse_arg_double(argc, argv, "--buffer", 0.01);
+    std::string dataset_type = parse_arg(argc, argv, "--dataset", "all");
+    std::string workload_type = parse_arg(argc, argv, "--workload", "all");
+    size_t dataset_size = parse_arg_size(argc, argv, "--size", 500000);
+    size_t num_operations = parse_arg_size(argc, argv, "--operations", 100000);
 
     std::cout << "Configuration:\n";
-    std::cout << "  Dataset size: " << dataset_size << " keys\n";
-    std::cout << "  Operations per workload: " << num_operations << "\n\n";
+    std::cout << "  Compression Level: " << compression_level << "\n";
+    std::cout << "  Buffer Size: " << (buffer_size * 100) << "%\n";
+    std::cout << "  Dataset Type: " << dataset_type << "\n";
+    std::cout << "  Dataset Size: " << dataset_size << " keys\n";
+    std::cout << "  Workload Type: " << workload_type << "\n";
+    std::cout << "  Operations: " << num_operations << "\n\n";
 
-    // Generate datasets
-    std::cout << "Generating datasets...\n";
+    // Generate specific dataset or all datasets
+    std::cout << "Generating dataset...\n";
 
     std::map<std::string, std::vector<uint64_t>> datasets;
-    datasets["Lognormal"] = DataGenerator::generate_lognormal(dataset_size);
-    datasets["Zipfian"] = DataGenerator::generate_zipfian(dataset_size);
-    datasets["Clustered"] = DataGenerator::generate_clustered(dataset_size / 10, 10);
-    datasets["Sequential"] = DataGenerator::generate_sequential_with_gaps(dataset_size);
-    datasets["Mixed"] = DataGenerator::generate_mixed(dataset_size);
-    datasets["Uniform"] = DataGenerator::generate_uniform(dataset_size);
 
-    std::cout << "Generated " << datasets.size() << " datasets.\n";
+    if (dataset_type == "all" || dataset_type == "lognormal") {
+        datasets["Lognormal"] = DataGenerator::generate_lognormal(dataset_size);
+    }
+    if (dataset_type == "all" || dataset_type == "zipfian") {
+        datasets["Zipfian"] = DataGenerator::generate_zipfian(dataset_size);
+    }
+    if (dataset_type == "all" || dataset_type == "clustered") {
+        datasets["Clustered"] = DataGenerator::generate_clustered(dataset_size / 10, 10);
+    }
+    if (dataset_type == "all" || dataset_type == "sequential") {
+        datasets["Sequential"] = DataGenerator::generate_sequential_with_gaps(dataset_size);
+    }
+    if (dataset_type == "all" || dataset_type == "mixed") {
+        datasets["Mixed"] = DataGenerator::generate_mixed(dataset_size);
+    }
+    if (dataset_type == "all" || dataset_type == "uniform") {
+        datasets["Uniform"] = DataGenerator::generate_uniform(dataset_size);
+    }
+
+    std::cout << "Generated " << datasets.size() << " dataset(s).\n";
 
     // Workload types
-    std::vector<std::string> workloads = {"read_heavy", "write_heavy", "mixed"};
+    std::vector<std::string> workloads;
+    if (workload_type == "all") {
+        workloads = {"read_heavy", "write_heavy", "mixed"};
+    } else {
+        workloads = {workload_type};
+    }
 
     // Store all results
     std::vector<BenchmarkResults> all_results;
@@ -219,67 +263,17 @@ int main(int argc, char* argv[]) {
 
     for (const auto& [dataset_name, keys] : datasets) {
         for (const auto& workload : workloads) {
-            // BTree
-            all_results.push_back(
-                run_benchmark<BTreeIndex<uint64_t, uint64_t>>(
-                    "BTree", workload, dataset_name, keys, num_operations,
-                    std::make_unique<BTreeIndex<uint64_t, uint64_t>>())
-            );
+            // Create WT-HALI with specified configuration
+            std::string config_name = "WT-HALI(comp=" + std::to_string(compression_level) +
+                                     ",buf=" + std::to_string(buffer_size) + ")";
 
-            // Hash Table
-            all_results.push_back(
-                run_benchmark<HashIndex<uint64_t, uint64_t>>(
-                    "HashTable", workload, dataset_name, keys, num_operations,
-                    std::make_unique<HashIndex<uint64_t, uint64_t>>())
-            );
-
-            // ART
-            all_results.push_back(
-                run_benchmark<ARTIndex<uint64_t, uint64_t>>(
-                    "ART", workload, dataset_name, keys, num_operations,
-                    std::make_unique<ARTIndex<uint64_t, uint64_t>>())
-            );
-
-            // PGM-Index
-            all_results.push_back(
-                run_benchmark<PGMIndex<uint64_t, uint64_t>>(
-                    "PGM-Index", workload, dataset_name, keys, num_operations,
-                    std::make_unique<PGMIndex<uint64_t, uint64_t>>())
-            );
-
-            // RMI
-            all_results.push_back(
-                run_benchmark<RMIIndex<uint64_t, uint64_t>>(
-                    "RMI", workload, dataset_name, keys, num_operations,
-                    std::make_unique<RMIIndex<uint64_t, uint64_t>>())
-            );
-
-            // HALIv1 (baseline from Phase 1)
-            all_results.push_back(
-                run_benchmark<HALIIndex<uint64_t, uint64_t>>(
-                    "HALIv1", workload, dataset_name, keys, num_operations,
-                    std::make_unique<HALIIndex<uint64_t, uint64_t>>())
-            );
-
-            // HALIv2 - Speed mode (compression_level = 0.0)
+            // HALIv2Index constructor: HALIv2Index(compression_level, merge_threshold)
+            // merge_threshold is buffer_size as percentage
             all_results.push_back(
                 run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
-                    "HALIv2-Speed", workload, dataset_name, keys, num_operations,
-                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.0))
-            );
-
-            // HALIv2 - Balanced mode (compression_level = 0.5)
-            all_results.push_back(
-                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
-                    "HALIv2-Balanced", workload, dataset_name, keys, num_operations,
-                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.5))
-            );
-
-            // HALIv2 - Memory mode (compression_level = 1.0)
-            all_results.push_back(
-                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
-                    "HALIv2-Memory", workload, dataset_name, keys, num_operations,
-                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(1.0))
+                    config_name, workload, dataset_name, keys, num_operations,
+                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(
+                        compression_level, buffer_size))
             );
         }
     }

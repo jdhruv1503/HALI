@@ -1,0 +1,97 @@
+[
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.3_scaling_100k",
+      "compression_level": 0.0,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 100000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 16.29,
+      "bytes_per_key": 18.94,
+      "lookup_ns": 156.6,
+      "insert_ops_sec": 10623515.0
+    },
+    "elapsed_seconds": 0.05596160888671875
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.3_scaling_250k",
+      "compression_level": 0.0,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 250000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 39.87,
+      "bytes_per_key": 19.0,
+      "lookup_ns": 214.0,
+      "insert_ops_sec": 9895275.0
+    },
+    "elapsed_seconds": 0.09456562995910645
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.3_scaling_500k",
+      "compression_level": 0.0,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 79.85,
+      "bytes_per_key": 18.98,
+      "lookup_ns": 221.9,
+      "insert_ops_sec": 10794580.0
+    },
+    "elapsed_seconds": 0.15011000633239746
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.3_scaling_750k",
+      "compression_level": 0.0,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 750000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 97.91,
+      "bytes_per_key": 18.05,
+      "lookup_ns": 149.5,
+      "insert_ops_sec": 11666447.0
+    },
+    "elapsed_seconds": 0.1774616241455078
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.3_scaling_1000k",
+      "compression_level": 0.0,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 1000000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 169.3,
+      "bytes_per_key": 19.0,
+      "lookup_ns": 397.2,
+      "insert_ops_sec": 7455287.0
+    },
+    "elapsed_seconds": 0.2961890697479248
+  }
+]

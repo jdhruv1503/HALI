@@ -1,0 +1,287 @@
+[
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer5_wlread_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.005,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "read_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 93.54,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 268.3,
+      "insert_ops_sec": 5747746.0
+    },
+    "elapsed_seconds": 0.1790783405303955
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer5_wlmixed",
+      "compression_level": 0.5,
+      "buffer_size": 0.005,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 85.06,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 250.5,
+      "insert_ops_sec": 7496443.0
+    },
+    "elapsed_seconds": 0.17065763473510742
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer5_wlwrite_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.005,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "write_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 87.6,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 303.9,
+      "insert_ops_sec": 9549975.0
+    },
+    "elapsed_seconds": 0.1537036895751953
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer10_wlread_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "read_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 77.55,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 227.2,
+      "insert_ops_sec": 6233655.0
+    },
+    "elapsed_seconds": 0.16023588180541992
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer10_wlmixed",
+      "compression_level": 0.5,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 84.37,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 432.6,
+      "insert_ops_sec": 5334934.0
+    },
+    "elapsed_seconds": 0.17481470108032227
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer10_wlwrite_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.01,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "write_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 86.42,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 289.8,
+      "insert_ops_sec": 9734003.0
+    },
+    "elapsed_seconds": 0.15244221687316895
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer20_wlread_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.02,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "read_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 79.72,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 255.9,
+      "insert_ops_sec": 4918299.0
+    },
+    "elapsed_seconds": 0.17272067070007324
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer20_wlmixed",
+      "compression_level": 0.5,
+      "buffer_size": 0.02,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 81.26,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 320.7,
+      "insert_ops_sec": 7035901.0
+    },
+    "elapsed_seconds": 0.16630864143371582
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer20_wlwrite_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.02,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "write_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 81.74,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 334.8,
+      "insert_ops_sec": 9579226.0
+    },
+    "elapsed_seconds": 0.14767765998840332
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer50_wlread_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.05,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "read_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 82.15,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 162.2,
+      "insert_ops_sec": 7830799.0
+    },
+    "elapsed_seconds": 0.14986038208007812
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer50_wlmixed",
+      "compression_level": 0.5,
+      "buffer_size": 0.05,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 82.04,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 338.4,
+      "insert_ops_sec": 6993371.0
+    },
+    "elapsed_seconds": 0.16599059104919434
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer50_wlwrite_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.05,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "write_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 77.24,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 302.1,
+      "insert_ops_sec": 10009859.0
+    },
+    "elapsed_seconds": 0.14382576942443848
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer100_wlread_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.1,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "read_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 85.29,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 212.5,
+      "insert_ops_sec": 6772000.0
+    },
+    "elapsed_seconds": 0.1613764762878418
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer100_wlmixed",
+      "compression_level": 0.5,
+      "buffer_size": 0.1,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "mixed",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 83.84,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 263.2,
+      "insert_ops_sec": 7468450.0
+    },
+    "elapsed_seconds": 0.17443203926086426
+  },
+  {
+    "status": "success",
+    "config": {
+      "name": "exp2.2_buffer100_wlwrite_heavy",
+      "compression_level": 0.5,
+      "buffer_size": 0.1,
+      "dataset_type": "clustered",
+      "dataset_size": 500000,
+      "workload_type": "write_heavy",
+      "num_operations": 100000
+    },
+    "results": {
+      "build_ms": 86.2,
+      "bytes_per_key": 19.87,
+      "lookup_ns": 491.6,
+      "insert_ops_sec": 8783702.0
+    },
+    "elapsed_seconds": 0.16262054443359375
+  }
+]
