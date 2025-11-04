@@ -1,0 +1,9 @@
+build/
+.git/
+.vscode/
+*.o
+*.so
+*.a
+results/*.csv
+results/*.png
+data/*.bin

@@ -1,0 +1,79 @@
+* INTRODUCTION *
+
+Fs-hasher package contains tools and a library for
+
+1) collecting file system snapshots; and
+2) parsing previously collected snapshots.
+
+Snapshots collected with fs-hasher include both file system data and meta-data.
+Fs-hasher does not collect the complete content of a file but instead chunks
+all files, as done by deduplication systems, and then collects the hashes of
+every chunk.
+
+Two main tools included in the package are:
+
+1) fs-hasher tool that collects file system snapshots; and
+2) hf-stat tool that prints information from previously collected snapshots.
+
+All provided tools have corresponding man-pages in the manpages/ subdirectory.
+Without installing the package, one can read these man-pages by running man
+tool against the corresponding man-page file. E.g., to read hf-stat man-page,
+run
+
+man manpages/hf-stat.1
+
+* INSTALLATION *
+
+Standard `configure`, `make`, and `make install` procedure should work.  Refer
+to the INSTALL file to learn more details.
+
+* PARSING EXISTING SNAPSHOTS *
+
+The snapshots are stored in so called hash files.  Two approaches exist to
+parse and analyze previously collected hash files.  First, users can run
+hf-stat tool to print information from a hash file in a human readable format.
+Users then can write scripts around hf-stat tool to perform specific analysis.
+One can use examplary coreutils-8.22.hash file in examples/ subdirectory to
+quickly see how hf-stat's output looks like.
+
+Second, users can write a C program that reads a hash file directly, without
+using hf-stat tool.  In this case, libhashfile library should be used to access
+the data in a hash file.  examples/ subdirectory contains a simple
+read_hashfile.c program that can serve as a simple example of using libhashfile
+library.  Consult libhashfile man-page for information about the libhashfile
+API.
+
+* COLLECTING NEW SNAPSHOTS *
+
+Fs-hasher tool scans a file system and creates its data and meta-data snapshot.
+Fs-hasher does not collect the complete content of a file but instead chunks
+all files, as done by deduplication systems, and then collects the hashes of
+every chunk.  Both fixed and variable length chunking are supported.  A user
+can specify various chunking parameters (e.g., expected chunk size for variable
+chunking) and pick between MURMUR, MD5, and SHA256 hashing.  Fs-hasher can also
+collect the compression ratio of every chunk. Consult fs-hasher man-page for
+details on running hash files.
+
+* OTHER TOOLS *
+
+In addition to fs-hasher and hf-stat, the following tools are included:
+
+hf-anonymizer
+	Anonymizes a hash file.
+
+hf-simdex
+	Simple chunk indexing tool that computes the number of
+	unique and duplicate chunks in one or several hash files.
+
+Read man-pages or run corresponding tools with '-u' option to get help on their
+usage.
+
+* SUPPORT *
+
+Any questions regarding fs-hasher should be sent to the following mailing list:
+
+fsltraces@fsl.cs.sunysb.edu
+
+One can subscribe to this mailing list at:
+
+http://www.fsl.cs.sunysb.edu/mailman/listinfo/fsltraces

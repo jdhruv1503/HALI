@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  hali-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hali-research
+
+    # Resource allocation for reproducible benchmarking
+    cpus: '8'
+    mem_limit: 8g
+
+    # Enable performance monitoring
+    privileged: true
+
+    volumes:
+      - .:/workspace
+      - ./data:/workspace/data
+      - ./results:/workspace/results
+
+    working_dir: /workspace
+
+    tty: true
+    stdin_open: true

@@ -1,0 +1,47 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.exe
+simulator
+validate
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# Large data files (SOSD datasets)
+data/sosd/*.bin
+data/sosd/*.dat
+data/sosd/*.txt
+*.csv.gz
+
+# Temporary files
+*.tmp
+*.log
+.cache/
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# External libraries (downloaded via git clone or wget)
+external/libs/parallel-hashmap/
+external/libs/art_map/
+external/libs/PGM-index/
+
+# Keep external/libs directory structure but ignore contents
+!external/libs/.gitkeep

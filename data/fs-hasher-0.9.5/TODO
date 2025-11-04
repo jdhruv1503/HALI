@@ -1,0 +1,73 @@
+PER-TOOL TODOs
+
+*** fs-hasher ***
+
+- After adding compression ratio, our CPU utilization is very high (up to 100%)
+  and we cannot scan some large FSL home directories in 24 hour window.
+  We should parallelize our code: producer-thread that reads data in and
+  chunking/compression threads as consumer-threads.
+
+- Chunking init methods currently set the header values for hash files.
+  It is ugly. Fix it somehow.
+
+- Add 'seed' parameter for a random chunking.
+
+- Add PRIME and M parameters for Rabin chunking.
+
+- Probability not in double but as integer. Definitely need, otherwise format
+  mismatch.
+
+- It would be interesting to introduce an optional pre-scan phase
+  that scans all the files, counts the total amount of space occupied and
+  then during the main phase outputs current progress. Say:
+  N files out of M and XMB out of YMB scanned.
+
+- Add mechanisms to detect sparse files.  Take into account special
+  case of UNIX FS - NFS.
+
+- expression support for exclude option
+
+- collect magic numbers of the scanned files
+
+- If someone suddenly reboots the server where fs-hasher is running,
+  we don't see any warning/error message in fs-hasher's output (neither
+  in stdout nor in stderr). In a large collection of hash and
+  log files it is hard to identify such prematurely-terminated runs.
+  I think we should have a signal handler for SIGTERM.
+
+- use getopt_long() instead of getop() to introduce long options
+  (e.g., --help).
+
+*** hf-stat ***
+
+- More human friendly output: order and column names
+
+- The mode that prints only hashes
+
+- Verify that we print all available information
+
+- That would be great if we can support formatted output option.  E.g., we can
+  use the syntax similar to blktrace: F,"format" - for files H,"format" - for
+  hashes etc.
+
+*** hashconcat ***
+
+- refactor, as it was written in "on the knee" manner
+
+*** hf-anonymizer ***
+
+- We screw up the start time, the end time, and the hostname information.  This
+  is because hashfilelib library sets these fields by itself. We should be able
+  to override these values.
+
+*** hf-simdex ***
+
+- Use liblog
+
+FORMAT TODOs
+
+- Currently the header of a hashfile does not record the information
+  about the compression method used during the scan.
+
+- Add markers (e.g., OxDEADEAD) to detect skews while reading the hashfile.
+  Or, may be checksums to ensure integrity as well?
