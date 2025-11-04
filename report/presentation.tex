@@ -10,6 +10,7 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{booktabs}
+\usepackage{multirow}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{amsmath}
@@ -412,7 +413,7 @@ ART & 310 & 20.00 & 14.8x \\
 \textbf{Root Cause:} Fallback search dominates (66\% of total latency)
 \end{frame}
 
-\begin{frame}{Why Does Router Misprediction Happen?}
+\begin{frame}[fragile]{Why Does Router Misprediction Happen?}
 \begin{columns}
 \column{0.5\textwidth}
 \textbf{Problem:} Uniform size partitioning
