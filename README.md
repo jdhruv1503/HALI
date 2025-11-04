@@ -1,8 +1,8 @@
 # HALI: Hierarchical Adaptive Learned Index
 
-A research implementation of a novel hybrid learned index structure designed for dynamic key-value workloads, benchmarked against state-of-the-art baseline indexes.
+A research implementation of a novel hybrid learned index structure for dynamic key-value workloads. HALI combines the memory efficiency of learned indexes with the robustness of traditional data structures through adaptive expert selection.
 
-**Latest:** HALIv2 achieves **54-89% faster lookups** and **10-14x higher insert throughput** compared to HALIv1 through guaranteed-correct binary search routing and adaptive expert scaling.
+**Latest Results:** HALIv2 achieves **89% faster lookups** (507ns → 54.7ns) and **14x higher insert throughput** (1.04M → 14.7M ops/sec) compared to HALIv1 through guaranteed-correct binary search routing.
 
 ## Overview
 
@@ -173,6 +173,23 @@ Six synthetic distributions (~500K keys each):
 - HALIv2 production benchmarks: [`documentation/PRODUCTION_RESULTS.md`](documentation/PRODUCTION_RESULTS.md)
 - HALIv2 improvements summary: [`documentation/HALIV2_IMPROVEMENTS.md`](documentation/HALIV2_IMPROVEMENTS.md)
 - Research progress log: [`documentation/RESEARCH_PROGRESS.md`](documentation/RESEARCH_PROGRESS.md)
+
+## Research Presentation
+
+A comprehensive LaTeX Beamer presentation documenting the complete HALI research journey is available in the `report/` directory:
+
+- **File:** `report/presentation.tex`
+- **Format:** 45+ slides covering HALIv1 design, critical issues, HALIv2 improvements, and results
+- **Build:** `cd report && pdflatex presentation.tex`
+- **Theme:** Berkeley with Seahorse color scheme (16:9 aspect ratio)
+
+The presentation includes:
+- Complete architecture diagrams (TikZ)
+- Performance visualizations (PGFPlots)
+- Pareto frontier analysis
+- Lessons learned and future work
+
+See `report/README.md` for compilation instructions.
 
 ## Results Highlights
 
