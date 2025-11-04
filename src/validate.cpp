@@ -10,15 +10,15 @@
 #include "indexes/pgm_index.h"
 #include "indexes/rmi_index.h"
 #include "indexes/hali_index.h"
+#include "indexes/haliv2_index.h"
 #include "data_generator.h"
 
 using namespace hali;
 
 template<typename IndexType>
-bool validate_index(const std::string& name, const std::vector<uint64_t>& keys) {
+bool validate_index(const std::string& name, const std::vector<uint64_t>& keys,
+                    std::unique_ptr<IndexType> index = std::make_unique<IndexType>()) {
     std::cout << "Validating " << name << "..." << std::flush;
-
-    auto index = std::make_unique<IndexType>();
 
     // Create values
     std::vector<uint64_t> values(keys.size());
@@ -128,7 +128,13 @@ int main() {
     all_passed &= validate_index<ARTIndex<uint64_t, uint64_t>>("ART", clustered);
     all_passed &= validate_index<PGMIndex<uint64_t, uint64_t>>("PGM-Index", clustered);
     all_passed &= validate_index<RMIIndex<uint64_t, uint64_t>>("RMI", clustered);
-    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALI", clustered);
+    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALIv1", clustered);
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Speed", clustered,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.0));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Balanced", clustered,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.5));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Memory", clustered,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(1.0));
     std::cout << "\n";
 
     std::cout << "Testing with Sequential data:\n";
@@ -137,7 +143,13 @@ int main() {
     all_passed &= validate_index<ARTIndex<uint64_t, uint64_t>>("ART", sequential);
     all_passed &= validate_index<PGMIndex<uint64_t, uint64_t>>("PGM-Index", sequential);
     all_passed &= validate_index<RMIIndex<uint64_t, uint64_t>>("RMI", sequential);
-    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALI", sequential);
+    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALIv1", sequential);
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Speed", sequential,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.0));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Balanced", sequential,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.5));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Memory", sequential,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(1.0));
     std::cout << "\n";
 
     std::cout << "Testing with Uniform data:\n";
@@ -146,7 +158,13 @@ int main() {
     all_passed &= validate_index<ARTIndex<uint64_t, uint64_t>>("ART", uniform);
     all_passed &= validate_index<PGMIndex<uint64_t, uint64_t>>("PGM-Index", uniform);
     all_passed &= validate_index<RMIIndex<uint64_t, uint64_t>>("RMI", uniform);
-    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALI", uniform);
+    all_passed &= validate_index<HALIIndex<uint64_t, uint64_t>>("HALIv1", uniform);
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Speed", uniform,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.0));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Balanced", uniform,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.5));
+    all_passed &= validate_index<HALIv2Index<uint64_t, uint64_t>>("HALIv2-Memory", uniform,
+        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(1.0));
     std::cout << "\n";
 
     if (all_passed) {

@@ -12,6 +12,7 @@
 #include "indexes/pgm_index.h"
 #include "indexes/rmi_index.h"
 #include "indexes/hali_index.h"
+#include "indexes/haliv2_index.h"
 #include "timing_utils.h"
 #include "data_generator.h"
 #include "workload_generator.h"
@@ -65,7 +66,8 @@ BenchmarkResults run_benchmark(
     const std::string& workload_type,
     const std::string& dataset_name,
     const std::vector<uint64_t>& keys,
-    size_t num_operations = 100000)
+    size_t num_operations,
+    std::unique_ptr<IndexType> index)
 {
     BenchmarkResults results;
     results.index_name = index_name;
@@ -75,9 +77,6 @@ BenchmarkResults run_benchmark(
 
     std::cout << "\n[Running] " << index_name << " on " << dataset_name
               << " with " << workload_type << " workload..." << std::flush;
-
-    // Create index instance
-    auto index = std::make_unique<IndexType>();
 
     // Build index (load data)
     Timer build_timer;
@@ -223,37 +222,64 @@ int main(int argc, char* argv[]) {
             // BTree
             all_results.push_back(
                 run_benchmark<BTreeIndex<uint64_t, uint64_t>>(
-                    "BTree", workload, dataset_name, keys, num_operations)
+                    "BTree", workload, dataset_name, keys, num_operations,
+                    std::make_unique<BTreeIndex<uint64_t, uint64_t>>())
             );
 
             // Hash Table
             all_results.push_back(
                 run_benchmark<HashIndex<uint64_t, uint64_t>>(
-                    "HashTable", workload, dataset_name, keys, num_operations)
+                    "HashTable", workload, dataset_name, keys, num_operations,
+                    std::make_unique<HashIndex<uint64_t, uint64_t>>())
             );
 
             // ART
             all_results.push_back(
                 run_benchmark<ARTIndex<uint64_t, uint64_t>>(
-                    "ART", workload, dataset_name, keys, num_operations)
+                    "ART", workload, dataset_name, keys, num_operations,
+                    std::make_unique<ARTIndex<uint64_t, uint64_t>>())
             );
 
             // PGM-Index
             all_results.push_back(
                 run_benchmark<PGMIndex<uint64_t, uint64_t>>(
-                    "PGM-Index", workload, dataset_name, keys, num_operations)
+                    "PGM-Index", workload, dataset_name, keys, num_operations,
+                    std::make_unique<PGMIndex<uint64_t, uint64_t>>())
             );
 
             // RMI
             all_results.push_back(
                 run_benchmark<RMIIndex<uint64_t, uint64_t>>(
-                    "RMI", workload, dataset_name, keys, num_operations)
+                    "RMI", workload, dataset_name, keys, num_operations,
+                    std::make_unique<RMIIndex<uint64_t, uint64_t>>())
             );
 
-            // HALI (our novel contribution)
+            // HALIv1 (baseline from Phase 1)
             all_results.push_back(
                 run_benchmark<HALIIndex<uint64_t, uint64_t>>(
-                    "HALI", workload, dataset_name, keys, num_operations)
+                    "HALIv1", workload, dataset_name, keys, num_operations,
+                    std::make_unique<HALIIndex<uint64_t, uint64_t>>())
+            );
+
+            // HALIv2 - Speed mode (compression_level = 0.0)
+            all_results.push_back(
+                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
+                    "HALIv2-Speed", workload, dataset_name, keys, num_operations,
+                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.0))
+            );
+
+            // HALIv2 - Balanced mode (compression_level = 0.5)
+            all_results.push_back(
+                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
+                    "HALIv2-Balanced", workload, dataset_name, keys, num_operations,
+                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(0.5))
+            );
+
+            // HALIv2 - Memory mode (compression_level = 1.0)
+            all_results.push_back(
+                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
+                    "HALIv2-Memory", workload, dataset_name, keys, num_operations,
+                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(1.0))
             );
         }
     }
