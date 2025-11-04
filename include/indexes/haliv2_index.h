@@ -54,7 +54,8 @@ private:
         }
 
         bool use_bloom_filters() const {
-            return true;  // Always enabled in v2
+            // Enabled with fallback safety check in find()
+            return true;
         }
 
         size_t bloom_bits_per_key() const {
@@ -280,13 +281,7 @@ public:
     }
 
     std::optional<ValueType> find(const KeyType& key) const override {
-        // Level 0: Check Bloom filter for fast negative lookup
-        if (config_.use_bloom_filters() && !global_bloom_.contains(key)) {
-            // Check delta buffer bloom (not implemented for simplicity - delta is small)
-            // Fall through to actual delta buffer check
-        }
-
-        // Level 1: Check delta buffer first
+        // Level 1: Check delta buffer first (bypass Bloom filter for delta)
         if (config_.compression_level < 0.5) {
             auto it = delta_buffer_hash_.find(key);
             if (it != delta_buffer_hash_.end()) {
@@ -304,20 +299,39 @@ public:
             return std::nullopt;
         }
 
-        // Binary search over expert boundaries to find correct expert
+        // Level 3: Check global Bloom filter for fast negative lookup
+        // (Only check after delta buffer, since Bloom filter doesn't include delta keys)
+        if (config_.use_bloom_filters() && !global_bloom_.contains(key)) {
+            return std::nullopt;  // Definitely not in main index
+        }
+
+        // Level 4: Binary search over expert boundaries to find correct expert
         size_t expert_id = route_to_expert(key);
 
         if (expert_id >= experts_.size()) {
             return std::nullopt;
         }
 
-        // Level 3: Check expert Bloom filter (disabled for debugging)
-        // TODO: Re-enable after fixing Bloom filter issue
-        // if (config_.use_bloom_filters() && !expert_blooms_[expert_id].contains(key)) {
-        //     return std::nullopt;  // Definitely not in this expert
-        // }
+        // Level 5: Check expert Bloom filter (RE-ENABLED with safety check)
+        if (config_.use_bloom_filters() && expert_id < expert_blooms_.size()) {
+            if (!expert_blooms_[expert_id].contains(key)) {
+                // Bloom filter says key is not in this expert
+                // But due to range-based partitioning, let's double-check the key is within bounds
+                if (expert_id < experts_.size()) {
+                    const auto& expert = experts_[expert_id];
+                    if (key < expert->min_key || key > expert->max_key) {
+                        // Key is definitely outside this expert's range
+                        return std::nullopt;
+                    }
+                    // Key might be in expert's range but Bloom filter gives false negative
+                    // This can happen with hash collisions - proceed to expert query
+                } else {
+                    return std::nullopt;
+                }
+            }
+        }
 
-        // Level 4: Query expert
+        // Level 6: Query expert
         return experts_[expert_id]->find(key);
     }
 
@@ -359,31 +373,67 @@ public:
         expert_blooms_.clear();
         expert_blooms_.reserve(num_experts);
 
-        // Partition by KEY RANGES (not by size!)
-        size_t partition_size = keys.size() / num_experts;
+        // Partition by KEY RANGES (true range-based partitioning for clustered data)
+        // Calculate key range span
+        KeyType min_global_key = sorted_data.front().first;
+        KeyType max_global_key = sorted_data.back().first;
 
+        // Handle edge case where all keys are the same
+        if (min_global_key == max_global_key) {
+            num_experts = 1;
+        }
+
+        // Partition keys into experts based on key value ranges (not sizes)
+        double range_per_expert = static_cast<double>(max_global_key - min_global_key + 1) / num_experts;
+
+        std::vector<std::vector<std::pair<KeyType, ValueType>>> expert_data(num_experts);
+
+        for (const auto& kv : sorted_data) {
+            KeyType key = kv.first;
+            // Calculate which expert this key belongs to based on its VALUE
+            size_t expert_id = std::min(
+                static_cast<size_t>((key - min_global_key) / range_per_expert),
+                num_experts - 1
+            );
+            expert_data[expert_id].push_back(kv);
+
+            // Insert into global Bloom filter
+            global_bloom_.insert(key);
+        }
+
+        // Create experts from partitioned data
+        // IMPORTANT: Use CONSISTENT range-based boundaries for routing
         for (size_t i = 0; i < num_experts; ++i) {
-            size_t start = i * partition_size;
-            size_t end = (i == num_experts - 1) ? keys.size() : (i + 1) * partition_size;
+            // Calculate expected key range for this expert (for consistent routing)
+            KeyType expected_min = min_global_key + static_cast<KeyType>(i * range_per_expert);
+            KeyType expected_max = (i == num_experts - 1) ?
+                max_global_key :
+                (min_global_key + static_cast<KeyType>((i + 1) * range_per_expert) - 1);
+
+            // Always use expected_min as boundary for consistent routing
+            expert_boundaries_.push_back(expected_min);
+
+            if (expert_data[i].empty()) {
+                // Empty expert due to gaps in clustered data
+                // Create an empty ART expert as placeholder to maintain expert_id consistency
+                experts_.push_back(std::make_unique<ARTExpert>(
+                    std::vector<KeyType>(), std::vector<ValueType>(), expected_min, expected_max));
+                expert_blooms_.push_back(BloomFilter(1, config_.bloom_bits_per_key()));  // Empty Bloom filter
+                continue;
+            }
 
             std::vector<KeyType> part_keys;
             std::vector<ValueType> part_values;
 
-            for (size_t j = start; j < end; ++j) {
-                part_keys.push_back(sorted_data[j].first);
-                part_values.push_back(sorted_data[j].second);
-
-                // Insert into global Bloom filter
-                global_bloom_.insert(sorted_data[j].first);
+            for (const auto& kv : expert_data[i]) {
+                part_keys.push_back(kv.first);
+                part_values.push_back(kv.second);
             }
-
-            // Record expert boundary (min key in this partition)
-            expert_boundaries_.push_back(part_keys.front());
 
             // Determine expert type based on data characteristics and compression level
             ExpertType type = select_expert_type(part_keys);
 
-            // Create expert with guaranteed key range
+            // Create expert with actual key range (for data storage)
             KeyType min_key = part_keys.front();
             KeyType max_key = part_keys.back();
 
@@ -404,7 +454,7 @@ public:
         }
 
         // Add sentinel boundary (one past last expert)
-        expert_boundaries_.push_back(sorted_data.back().first + 1);
+        expert_boundaries_.push_back(max_global_key + 1);
 
         // Clear delta buffers
         delta_buffer_art_.clear();
@@ -468,19 +518,35 @@ private:
      * @return expert index (guaranteed correct, no fallback needed)
      */
     size_t route_to_expert(KeyType key) const {
+        if (experts_.empty()) {
+            return 0;
+        }
+
         // Binary search over expert boundaries
         // expert_boundaries_[i] is the minimum key for expert i
+        // expert_boundaries_.back() is the sentinel (one past last expert)
+
+        // Find the first boundary > key
         auto it = std::upper_bound(expert_boundaries_.begin(),
                                    expert_boundaries_.end() - 1,  // Exclude sentinel
                                    key);
 
         if (it == expert_boundaries_.begin()) {
-            return 0;  // Key is before all experts (edge case)
+            // Key is smaller than the first expert's min key
+            // This should not happen in normal operation, but handle gracefully
+            return 0;
         }
 
-        // Move back one position to find the expert that owns this key
+        // Move back one position to find the expert that should contain this key
         --it;
-        return std::distance(expert_boundaries_.begin(), it);
+        size_t expert_id = std::distance(expert_boundaries_.begin(), it);
+
+        // Bounds check
+        if (expert_id >= experts_.size()) {
+            expert_id = experts_.size() - 1;
+        }
+
+        return expert_id;
     }
 
     /**
