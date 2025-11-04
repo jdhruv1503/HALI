@@ -19,7 +19,10 @@
       "Bash(git push:*)",
       "Bash(tee:*)",
       "Bash(cat:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(find:*)",
+      "Bash(git commit:*)",
+      "Bash(pdflatex:*)"
     ],
     "deny": [],
     "ask": []
