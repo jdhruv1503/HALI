@@ -15,6 +15,7 @@ include_directories(${CMAKE_SOURCE_DIR}/external/libs)
 include_directories(${CMAKE_SOURCE_DIR}/external/libs/parallel-hashmap)
 include_directories(${CMAKE_SOURCE_DIR}/external/libs/art_map/include)
 include_directories(${CMAKE_SOURCE_DIR}/external/libs/PGM-index/include)
+include_directories(${CMAKE_SOURCE_DIR}/external/ALEX/src/core)
 
 # Find threads library
 find_package(Threads REQUIRED)

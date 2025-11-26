@@ -11,7 +11,6 @@
 #include "indexes/art_index.h"
 #include "indexes/pgm_index.h"
 #include "indexes/rmi_index.h"
-#include "indexes/hali_index.h"
 #include "indexes/haliv2_index.h"
 #include "timing_utils.h"
 #include "data_generator.h"
@@ -204,16 +203,20 @@ int main(int argc, char* argv[]) {
     std::cout << "===========================================\n\n";
 
     // Parse command-line arguments
-    double compression_level = parse_arg_double(argc, argv, "--compression", 0.5);
-    double buffer_size = parse_arg_double(argc, argv, "--buffer", 0.01);
+    std::string index_type = parse_arg(argc, argv, "--index", "wthali");
+    double compression_level = parse_arg_double(argc, argv, "--compression", 0.25);
+    double buffer_size = parse_arg_double(argc, argv, "--buffer", 0.005);
     std::string dataset_type = parse_arg(argc, argv, "--dataset", "all");
     std::string workload_type = parse_arg(argc, argv, "--workload", "all");
     size_t dataset_size = parse_arg_size(argc, argv, "--size", 500000);
     size_t num_operations = parse_arg_size(argc, argv, "--operations", 100000);
 
     std::cout << "Configuration:\n";
-    std::cout << "  Compression Level: " << compression_level << "\n";
-    std::cout << "  Buffer Size: " << (buffer_size * 100) << "%\n";
+    std::cout << "  Index Type: " << index_type << "\n";
+    if (index_type == "wthali" || index_type == "all") {
+        std::cout << "  Compression Level: " << compression_level << "\n";
+        std::cout << "  Buffer Size: " << (buffer_size * 100) << "%\n";
+    }
     std::cout << "  Dataset Type: " << dataset_type << "\n";
     std::cout << "  Dataset Size: " << dataset_size << " keys\n";
     std::cout << "  Workload Type: " << workload_type << "\n";
@@ -263,18 +266,67 @@ int main(int argc, char* argv[]) {
 
     for (const auto& [dataset_name, keys] : datasets) {
         for (const auto& workload : workloads) {
-            // Create WT-HALI with specified configuration
-            std::string config_name = "WT-HALI(comp=" + std::to_string(compression_level) +
-                                     ",buf=" + std::to_string(buffer_size) + ")";
 
-            // HALIv2Index constructor: HALIv2Index(compression_level, merge_threshold)
-            // merge_threshold is buffer_size as percentage
-            all_results.push_back(
-                run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
-                    config_name, workload, dataset_name, keys, num_operations,
-                    std::make_unique<HALIv2Index<uint64_t, uint64_t>>(
-                        compression_level, buffer_size))
-            );
+            // Run BTree index
+            if (index_type == "all" || index_type == "btree") {
+                all_results.push_back(
+                    run_benchmark<BTreeIndex<uint64_t, uint64_t>>(
+                        "BTree", workload, dataset_name, keys, num_operations,
+                        std::make_unique<BTreeIndex<uint64_t, uint64_t>>())
+                );
+            }
+
+            // Run Hash index
+            if (index_type == "all" || index_type == "hash") {
+                all_results.push_back(
+                    run_benchmark<HashIndex<uint64_t, uint64_t>>(
+                        "Hash", workload, dataset_name, keys, num_operations,
+                        std::make_unique<HashIndex<uint64_t, uint64_t>>())
+                );
+            }
+
+            // Run ART index
+            if (index_type == "all" || index_type == "art") {
+                all_results.push_back(
+                    run_benchmark<ARTIndex<uint64_t, uint64_t>>(
+                        "ART", workload, dataset_name, keys, num_operations,
+                        std::make_unique<ARTIndex<uint64_t, uint64_t>>())
+                );
+            }
+
+            // Run PGM index
+            if (index_type == "all" || index_type == "pgm") {
+                all_results.push_back(
+                    run_benchmark<PGMIndex<uint64_t, uint64_t>>(
+                        "PGM-Index", workload, dataset_name, keys, num_operations,
+                        std::make_unique<PGMIndex<uint64_t, uint64_t>>())
+                );
+            }
+
+            // Run RMI index
+            if (index_type == "all" || index_type == "rmi") {
+                all_results.push_back(
+                    run_benchmark<RMIIndex<uint64_t, uint64_t>>(
+                        "RMI", workload, dataset_name, keys, num_operations,
+                        std::make_unique<RMIIndex<uint64_t, uint64_t>>())
+                );
+            }
+
+            // Run WT-HALI (HALIv2) index with optimal configuration
+            if (index_type == "all" || index_type == "wthali") {
+                std::string config_name = "WT-HALI";
+                if (index_type == "wthali") {
+                    config_name += "(comp=" + std::to_string(compression_level) +
+                                  ",buf=" + std::to_string(buffer_size) + ")";
+                }
+
+                all_results.push_back(
+                    run_benchmark<HALIv2Index<uint64_t, uint64_t>>(
+                        config_name, workload, dataset_name, keys, num_operations,
+                        std::make_unique<HALIv2Index<uint64_t, uint64_t>>(
+                            compression_level, buffer_size))
+                );
+            }
         }
     }
 

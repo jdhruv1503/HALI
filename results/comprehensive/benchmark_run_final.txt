@@ -1,0 +1,32 @@
+===========================================
+  WT-HALI: Write-Through HALI
+  Experimental Benchmark Runner
+===========================================
+
+Configuration:
+  Index Type: all
+  Compression Level: 0.25
+  Buffer Size: 0.5%
+  Dataset Type: all
+  Dataset Size: 500000 keys
+  Workload Type: all
+  Operations: 100000
+
+Generating dataset...
+Generated 6 dataset(s).
+
+========================================
+Starting Benchmark Experiments
+========================================
+
+[Running] BTree on Clustered with read_heavy workload... DONE
+
+[Running] Hash on Clustered with read_heavy workload... DONE
+
+[Running] ART on Clustered with read_heavy workload... DONE
+
+[Running] PGM-Index on Clustered with read_heavy workload... DONE
+
+[Running] RMI on Clustered with read_heavy workload... DONE
+
+[Running] ALEX on Clustered with read_heavy workload...

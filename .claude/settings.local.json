@@ -24,7 +24,9 @@
       "Bash(git commit:*)",
       "Bash(pdflatex:*)",
       "Bash(./build/simulator:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "WebSearch",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,2 +1,1 @@
 Index,Workload,Dataset,DatasetSize,BuildTime_ms,Memory_MB,BytesPerKey,MeanLookup_ns,P95Lookup_ns,P99Lookup_ns,InsertThroughput_ops
-WT-HALI(comp=0.000000,buf=0.010000),Mixed (50R/50W),Clustered,999706,169.295,18.1182,19.0039,397.204,762,1082,7.45529e+06

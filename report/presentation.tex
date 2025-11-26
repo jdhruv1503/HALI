@@ -1,59 +1,45 @@
-% WT-HALI Research Presentation
-% Author: Dhruv Joshi
-% Redesigned: Explanatory style with motivated design choices
+% WT-HALI: Write-Through Hierarchical Adaptive Learned Index
+% ELL405 Operating Systems Course Project - FINAL VERSION
 
-\documentclass[aspectratio=169,12pt]{beamer}
-\usetheme{Berkeley}
-\usecolortheme{seahorse}
+\documentclass[aspectratio=169,10pt]{beamer}
+\usetheme{Madrid}
 
 % Packages
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{booktabs}
-\usepackage{multirow}
-\usepackage{algorithm}
-\usepackage{algorithmic}
 \usepackage{amsmath}
-\usepackage{amssymb}
 \usepackage{graphicx}
-\usepackage{listings}
-\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{hyperref}
 
-\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds,calc}
+\usetikzlibrary{shapes,arrows,positioning,fit,calc}
 \pgfplotsset{compat=1.17}
+
+% Clickable links
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
 
 % Title Information
 \title[WT-HALI]{WT-HALI: Write-Through Hierarchical Adaptive Learned Index}
-\subtitle{Combining Learned Efficiency with Traditional Robustness}
-\author[D. Joshi]{Dhruv Joshi\\ \texttt{jdhruv1503@gmail.com}}
-\institute{Operating Systems Course Project}
-\date{\today}
-
-% Custom colors
-\definecolor{codegreen}{rgb}{0,0.6,0}
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codepurple}{rgb}{0.58,0.0.82}
-\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
-
-\lstdefinestyle{mystyle}{
-    backgroundcolor=\color{backcolour},
-    commentstyle=\color{codegreen},
-    keywordstyle=\color{blue},
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize,
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    numbers=left,
-    numbersep=5pt,
-    showspaces=false,
-    showstringspaces=false,
-    showtabs=false,
-    tabsize=2
+\subtitle{Benchmarking Traditional and Learned Index Structures}
+\author[Dhruv Joshi, Anushka Chaturvedi]{
+    Dhruv Joshi (2022EE32079)\\
+    Anushka Chaturvedi (2022EE31763)
 }
-\lstset{style=mystyle}
+\institute[IIT Delhi]{
+    ELL405: Operating Systems\\
+    Indian Institute of Technology, Delhi
+}
+\date{Fall 2025}
+
+% Remove footer
+\setbeamertemplate{footline}{}
+\setbeamertemplate{navigation symbols}{}
 
 \begin{document}
 
@@ -64,1326 +50,1055 @@
 \titlepage
 \end{frame}
 
-% ============================================================
-% OUTLINE
-% ============================================================
-\begin{frame}{Outline}
-\tableofcontents
-\end{frame}
+% NO OUTLINE SLIDE - removed as requested
 
 % ============================================================
-% SECTION 1: THE PROBLEM
+% SECTION 1: INTRODUCTION
 % ============================================================
-\section{The Problem: Learned Indexes Can't Handle Writes}
 
-\begin{frame}{The Learned Index Promise}
+\begin{frame}{Motivation: The Index Problem}
+\textbf{Indexes are critical for database and file system performance}
 
-\begin{block}{The Big Idea (Kraska et al., SIGMOD 2018)}
-Replace pointer-chasing B+Trees with machine learning models
-\end{block}
-
-\pause
-
-\textbf{Why?} Imagine you're looking for a book in a library...
-
-\pause
+\vspace{0.3cm}
 
 \begin{columns}
 \column{0.5\textwidth}
-\textbf{Traditional Index (B+Tree):}
+\textbf{Traditional Indexes}
 \begin{itemize}
-    \item Follow pointers room → shelf → book
-    \item \textcolor{red}{$\sim$12 cache misses per lookup}
-    \item But: Works for any data
+    \footnotesize
+    \item B+Tree, Hash Table, ART
+    \item Fast, well-understood
+    \item Higher memory (19-42 B/key)
+    \item 3-5 cache misses typical
+    \item \textcolor{green!70!black}{13-17M inserts/sec}
 \end{itemize}
 
-\pause
-
 \column{0.5\textwidth}
-\textbf{Learned Index:}
+\textbf{Learned Indexes}
 \begin{itemize}
-    \item Memorize the pattern: "Book X is at position Y"
-    \item \textcolor{green}{$\sim$2-3 cache misses}
-    \item But: What if books move?
+    \footnotesize
+    \item ML models predict positions
+    \item \textcolor{green!70!black}{Low memory (16 B/key)}
+    \item 70-200ns lookups
+    \item \textcolor{red}{Only 180K ins/sec}
+    \item Requires periodic retraining
 \end{itemize}
 \end{columns}
 
-\end{frame}
-
-\begin{frame}{Concrete Example: Looking Up Key 12345}
-
-\textbf{Scenario:} 1 million sorted integers
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{B+Tree approach:}
-\begin{enumerate}
-    \item Check root node → pointer to internal node (cache miss)
-    \pause
-    \item Check internal node → pointer to leaf (cache miss)
-    \pause
-    \item Check leaf node → find key (cache miss)
-    \pause
-    \item Total: \textcolor{red}{3+ cache misses, $\sim$20-30 ns}
-\end{enumerate}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Learned Index (RMI) approach:}
-\begin{enumerate}
-    \item Model predicts: "Key 12345 is at position $\approx$ 500,234"
-    \pause
-    \item Binary search $\pm$64 positions around prediction
-    \pause
-    \item Total: \textcolor{green}{1-2 cache misses, $\sim$70-90 ns}
-\end{enumerate}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Wait... that's SLOWER!} \pause $\rightarrow$ But uses \textcolor{green}{16 bytes/key vs B+Tree's 50+ bytes/key}
-
-\end{frame}
-
-\begin{frame}{The Catch: Dynamic Updates}
-
-\textbf{Problem:} What happens when you insert a new key?
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Example:} Insert key 12340 into our learned index
-
-\pause
+\vspace{0.4cm}
 
 \begin{center}
-\begin{tikzpicture}[scale=0.8]
-% Before
-\node[font=\footnotesize\bfseries] at (0,3) {Before Insert:};
-\draw[thick] (0,2) -- (8,2);
-\foreach \x/\key in {0/10000, 2/11000, 4/12000, 6/13000, 8/14000} {
-    \draw[thick] (\x,1.9) -- (\x,2.1);
-    \node[below, font=\tiny] at (\x,1.9) {\key};
-}
-\node[below, color=blue, font=\small] at (4.5,1.3) {Model predicts: key 12340 $\rightarrow$ position 4.17};
-
-\pause
-
-% After
-\node[font=\footnotesize\bfseries] at (0,0) {After Insert:};
-\draw[thick] (0,-1) -- (8,-1);
-\foreach \x/\key in {0/10000, 2/11000, 4/12000, 4.3/12340, 6/13000, 8/14000} {
-    \draw[thick] (\x,-1.1) -- (\x,-0.9);
-    \node[below, font=\tiny] at (\x,-1.1) {\key};
-}
-
-\pause
-
-\node[below, color=red, font=\small] at (4.5,-1.8) {Model now WRONG: predicts 12340 $\rightarrow$ position 4.17 (off by 1+)};
-
-\end{tikzpicture}
+\colorbox{blue!10}{\parbox{12cm}{\centering
+\textbf{Goal:} Achieve learned index memory efficiency without sacrificing write throughput.\\[0.1cm]
+\footnotesize \textbf{Our contribution:} WT-HALI achieves \textcolor{green!70!black}{5$\times$ faster writes} than pure learned indexes while maintaining 16.7 B/key memory efficiency.
+}}
 \end{center}
+\end{frame}
 
-\pause
+\begin{frame}{Project Overview}
+\textbf{Benchmark suite: 6 index structures across 108 experiments}
 
 \vspace{0.2cm}
 
-\textbf{Solution?} Retrain the model... but that takes \textcolor{red}{milliseconds to seconds!}
-
-\pause
-
-\textbf{Result:} Pure learned indexes get $\sim$100K inserts/sec vs B+Tree's $\sim$20M inserts/sec
-
-\end{frame}
-
-\begin{frame}{Motivation: We Need BOTH}
-
-\begin{center}
-\large
-\textbf{Can we get the memory efficiency of learned indexes}\\
-\textbf{AND the write performance of traditional structures?}
-\end{center}
-
-\pause
-
-\vspace{0.5cm}
-
 \begin{columns}
-\column{0.5\textwidth}
-\textbf{What We Want:}
+\column{0.55\textwidth}
+\begin{columns}
+\column{0.48\textwidth}
+\begin{block}{Traditional}
+\scriptsize
 \begin{itemize}
-    \item<2-> Fast lookups (< 100 ns)
-    \item<3-> High insert throughput (> 10M ops/sec)
-    \item<4-> Low memory (< 20 bytes/key)
-    \item<5-> 100\% correctness
+    \item B+Tree
+    \item Hash Table
+    \item ART (Radix Tree)
 \end{itemize}
+\end{block}
 
-\column{0.5\textwidth}
-\textbf{Existing Solutions Fall Short:}
+\column{0.48\textwidth}
+\begin{block}{Learned}
+\scriptsize
 \begin{itemize}
-    \item<2-> B+Tree: Fast writes, high memory
-    \item<3-> RMI/PGM: Low memory, slow writes
-    \item<4-> ALEX: Better writes, but complex
-    \item<5-> None: Guaranteed correct + fast
+    \item PGM-Index
+    \item RMI
 \end{itemize}
+\end{block}
 \end{columns}
 
-\pause[6]
+\vspace{0.1cm}
 
-\vspace{0.5cm}
-
-\begin{block}{Our Solution: WT-HALI}
-Write-Through buffer + Adaptive learned experts + Guaranteed routing
+\begin{block}{Our Contribution: WT-HALI}
+\scriptsize
+\begin{itemize}
+    \item Hybrid: Binary search router + Adaptive experts
+    \item Write-through ART buffer for fast inserts
+    \item 100\% routing accuracy (vs 25-47\% in v1)
+\end{itemize}
 \end{block}
 
+\column{0.42\textwidth}
+\textbf{Write Performance Comparison:}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    xbar,
+    width=5.5cm, height=4.5cm,
+    xlabel={\tiny Inserts (M/s)},
+    symbolic y coords={PGM, RMI, WT-HALI, ART, Hash, B+Tree},
+    ytick=data,
+    xmin=0, xmax=20,
+    bar width=6pt,
+    nodes near coords,
+    every node near coord/.append style={font=\tiny},
+    ytick style={font=\tiny},
+    xlabel style={font=\tiny}
+]
+\addplot[fill=blue!40] coordinates {(17.4,B+Tree) (13.9,Hash) (13.7,ART)};
+\addplot[fill=orange!60] coordinates {(1.0,WT-HALI)};
+\addplot[fill=red!40] coordinates {(0.19,RMI) (0.18,PGM)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+{\tiny WT-HALI: 5$\times$ better than learned indexes}
+\end{columns}
 \end{frame}
 
 % ============================================================
-% SECTION 2: WT-HALI ARCHITECTURE
+% SECTION 2: OS CONTEXT AND BACKGROUND
 % ============================================================
-\section{WT-HALI Architecture}
 
-\begin{frame}{Core Idea: Hybrid = Best of Both Worlds}
+\begin{frame}{Indexes in Operating Systems}
+\textbf{Why indexing matters for OS design}
 
-\textbf{Key Insight:} Don't force learned models to do everything!
+\vspace{0.15cm}
 
-\pause
-
-\vspace{0.3cm}
-
-\begin{block}{Design Principle}
-Use learned models where they excel, traditional structures where guarantees matter
+\begin{columns}
+\column{0.48\textwidth}
+\begin{block}{File Systems}
+\scriptsize
+\begin{itemize}
+    \item \textbf{XFS:} B+Trees for inodes, extents, free space
+    \item \textbf{Btrfs:} Copy-on-Write B+Trees throughout
+    \item \textbf{NTFS:} B+Trees for MFT and directory indexing
+    \item \textbf{ext4:} HTree (hash-based) for large directories
+    \item \textbf{ZFS:} Hash tables + B+Trees for metadata
+\end{itemize}
+\textit{Requirements:} Crash recovery, concurrency, range queries
 \end{block}
 
-\pause
+\begin{block}{Database Systems}
+\scriptsize
+\begin{itemize}
+    \item PostgreSQL, MySQL/InnoDB, SQLite: B+Tree indexes
+    \item Query optimizer depends on predictable index costs
+    \item ACID transactions require consistent index behavior
+\end{itemize}
+\end{block}
 
-\vspace{0.3cm}
-
-\textbf{Three-Level Architecture:}
-
+\column{0.48\textwidth}
+\begin{block}{OS Design Principles at Stake}
+\scriptsize
 \begin{enumerate}
-    \item<4-> \textbf{Level 3: Write-Through Buffer} \\
-    \textcolor{blue}{$\rightarrow$ Handles ALL inserts (traditional ART/HashMap)}
-
-    \item<5-> \textbf{Level 1: Guaranteed Router} \\
-    \textcolor{blue}{$\rightarrow$ Binary search routing (traditional, O(log m))}
-
-    \item<6-> \textbf{Level 2: Adaptive Experts} \\
-    \textcolor{blue}{$\rightarrow$ Learned models for data approximation (PGM/RMI/ART)}
+    \item \textbf{Simplicity:} Kernel code must be auditable\\
+          {\tiny B+Tree: $\sim$1000 LOC vs WT-HALI: 2000+ LOC}
+    \item \textbf{Worst-case guarantees:} O(log N) always\\
+          {\tiny Not ``usually fast'' — tail latency matters for SLAs}
+    \item \textbf{Predictability:} Same input $\rightarrow$ similar latency\\
+          {\tiny B+Tree: 1.4$\times$ variance vs WT-HALI: 8$\times$}
+    \item \textbf{Proven reliability:} 50+ years of B+Tree\\
+          {\tiny Battle-tested in every major OS and DBMS}
 \end{enumerate}
+\end{block}
 
-\end{frame}
-
-\begin{frame}{Level 3: Write-Through Buffer (The Key Innovation)}
-
-\textbf{Question:} How do we avoid slow retraining on every insert?
-
-\pause
-
-\textbf{Answer:} Don't insert into the learned structure at all!
-
-\pause
-
-\vspace{0.3cm}
+\vspace{0.1cm}
 
 \begin{center}
+\colorbox{yellow!20}{\scriptsize \textbf{Core tension:} Memory efficiency vs Performance predictability}
+\end{center}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{center}
+\colorbox{blue!10}{\scriptsize \textbf{Research question:} Can learned indexes offer meaningful trade-offs for OS/DB indexing?}
+\end{center}
+\end{frame}
+
+\begin{frame}{Why B+Trees Dominate: The Baseline}
+\textbf{Understanding what we're competing against: 22ns lookups, 17M ins/sec}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\column{0.6\textwidth}
+
+\textbf{Cache-Friendly Design:}
+\begin{itemize}
+    \scriptsize
+    \item Node size = 64 bytes (exactly one cache line)
+    \item Fanout 16-32 $\rightarrow$ only 3-4 tree levels for millions of keys
+    \item Sequential leaf pointers enable efficient range scans
+    \item CPU prefetching works well with predictable traversal
+\end{itemize}
+
+\vspace{0.15cm}
+
+\textbf{Write-Optimized Operations:}
+\begin{itemize}
+    \scriptsize
+    \item Node splits are \textbf{local} — no global restructuring required
+    \item No model retraining — structure adapts incrementally
+    \item Fine-grained locking enables high concurrency
+    \item Easy WAL/journal integration for crash recovery
+\end{itemize}
+
+\vspace{0.15cm}
+
+\textbf{Predictable Performance:}
+\begin{itemize}
+    \scriptsize
+    \item \textbf{Guaranteed} O(log N) worst-case for all operations
+    \item Data-distribution independent: works on any workload
+    \item Latency variance only 1.4$\times$ across distributions
+\end{itemize}
+
+\column{0.38\textwidth}
+\begin{center}
+\textbf{Latency Comparison:}
+
+\vspace{0.2cm}
+
+\scriptsize
+\begin{tabular}{lrr}
+\toprule
+\textbf{Index} & \textbf{Min} & \textbf{Max} \\
+\midrule
+B+Tree & 20ns & 28ns \\
+WT-HALI & 79ns & 636ns \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3cm}
+
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=4.5cm, height=3.5cm,
+    ylabel={\tiny Variance ($\times$)},
+    symbolic x coords={B+Tree, WT-HALI},
+    xtick=data,
+    xticklabel style={font=\scriptsize},
+    ymin=0, ymax=10,
+    bar width=18pt,
+    nodes near coords,
+    every node near coord/.append style={font=\scriptsize},
+    ylabel style={font=\tiny}
+]
+\addplot[fill=blue!50] coordinates {(B+Tree,1.4)};
+\addplot[fill=orange!50] coordinates {(WT-HALI,8.0)};
+\end{axis}
+\end{tikzpicture}
+
+{\tiny Lower variance = predictable tail latency}
+\end{center}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{center}
+\colorbox{yellow!20}{\scriptsize \textbf{Hypothesis:} Can we trade some predictability for memory savings in constrained environments?}
+\end{center}
+\end{frame}
+
+\begin{frame}{What are Learned Indexes?}
+\begin{center}
+\textit{``An index is a model that maps keys to positions''} — Kraska et al., SIGMOD 2018
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\column{0.42\textwidth}
+\textbf{Traditional B+Tree:}
+\begin{enumerate}
+    \scriptsize
+    \item Start at root, navigate via child pointers
+    \item Compare keys at each internal node
+    \item Binary search within leaf node
+\end{enumerate}
+{\scriptsize \textit{Cost:} 3-5 cache misses, 19-42 B/key}
+
+\vspace{0.25cm}
+
+\textbf{Learned Index:}
+\begin{enumerate}
+    \scriptsize
+    \item Train model $f$ on (key, position) pairs
+    \item At query: compute $pos = f(key)$
+    \item Binary search in error range $[pos \pm \epsilon]$
+\end{enumerate}
+{\scriptsize \textit{Cost:} 2-4 cache misses, 16 B/key}
+
+\vspace{0.2cm}
+
+\colorbox{red!15}{\parbox{5cm}{\centering \scriptsize
+\textbf{The Write Problem:}\\
+Inserts require array shifts + model retraining\\
+B+Tree: 17M/s vs Learned: 180K/s\\
+\textbf{$\sim$100$\times$ slower!}
+}}
+
+\column{0.55\textwidth}
+\begin{center}
+\textbf{Linear Model Approximation:}
+
+\vspace{0.15cm}
+
+\begin{tikzpicture}[scale=0.85]
+% Axes
+\draw[->, thick] (0,0) -- (6.5,0) node[right] {\scriptsize Key};
+\draw[->, thick] (0,0) -- (0,4.5) node[above] {\scriptsize Position};
+
+% Grid
+\draw[gray!30, very thin] (0,0) grid (6,4);
+
+% Data points
+\foreach \x/\y in {0.5/0.4, 1.2/1.0, 1.8/1.4, 2.5/2.0, 3.2/2.5, 3.8/2.9, 4.5/3.4, 5.3/3.9} {
+    \fill[blue] (\x,\y) circle (2.5pt);
+}
+
+% Linear fit
+\draw[red, very thick] (0.2,0.15) -- (5.8,4.2);
+
+% Error range illustration
+\draw[<->, green!60!black, thick] (3.2,2.1) -- (3.2,2.9);
+\node[green!60!black, right, font=\scriptsize] at (3.3,2.5) {$\pm\epsilon$};
+
+% Label - positioned to avoid intersection
+\node[red, fill=white, inner sep=2pt, font=\scriptsize] at (1.8,3.5) {$f(key) = a \cdot key + b$};
+
+% Annotation
+\node[font=\tiny, text width=3cm, align=center] at (3,-0.6) {Model predicts position;\\binary search handles error};
+\end{tikzpicture}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% SECTION 3: HALI DESIGN - THE JOURNEY
+% ============================================================
+
+\begin{frame}{HALI v1: Our First Attempt}
+\textbf{Initial idea: Combine RMI routing with adaptive experts and a delta buffer}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\column{0.55\textwidth}
+\begin{center}
 \begin{tikzpicture}[
-    box/.style={draw, rectangle, minimum width=4cm, minimum height=1cm, font=\small},
+    box/.style={draw, rectangle, minimum height=0.5cm, font=\scriptsize, rounded corners=2pt},
+    arrow/.style={->, thick, >=stealth}
+]
+% Delta buffer
+\node[box, fill=orange!20, minimum width=3.5cm] (buffer) at (0,2.5) {ART Delta-Buffer};
+
+% RMI Router
+\node[box, fill=blue!20, minimum width=3.5cm] (router) at (0,1.5) {RMI Router (100 experts)};
+
+% Experts
+\node[box, fill=green!20, minimum width=1cm] (pgm) at (-1.5,0.3) {\tiny PGM};
+\node[box, fill=green!20, minimum width=1cm] (rmi) at (0,0.3) {\tiny RMI};
+\node[box, fill=green!20, minimum width=1cm] (art) at (1.5,0.3) {\tiny ART};
+
+% Arrows
+\draw[arrow] (buffer) -- (router);
+\draw[arrow] (router) -- (pgm);
+\draw[arrow] (router) -- (rmi);
+\draw[arrow] (router) -- (art);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+
+\textbf{The Design:}
+\begin{itemize}
+    \scriptsize
+    \item RMI model routes queries to one of 100 experts
+    \item Each expert is PGM, RMI, or ART based on data fit
+    \item Delta buffer absorbs new inserts
+    \item Periodic merge + retrain
+\end{itemize}
+
+\column{0.42\textwidth}
+\begin{block}{Results (Clustered, 500K keys)}
+\scriptsize
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{HALI v1} & \textbf{B+Tree} \\
+\midrule
+Lookup & 507 ns & 23 ns \\
+Insert & 1.2 M/s & 17 M/s \\
+Memory & 16 B/key & 19.2 B/key \\
+Routing acc. & \textcolor{red}{25-47\%} & N/A \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{alertblock}{Why It Failed}
+\scriptsize
+\begin{enumerate}
+    \item \textcolor{red}{Router accuracy only 25-47\%}
+    \item Misprediction $\rightarrow$ must scan multiple experts
+    \item Overlapping key ranges caused ambiguity
+    \item RMI router itself needed retraining
+\end{enumerate}
+\end{alertblock}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{center}
+\colorbox{red!15}{\scriptsize \textbf{Lesson:} Probabilistic routing is unacceptable for indexing — we need deterministic guarantees}
+\end{center}
+\end{frame}
+
+\begin{frame}{HALI v1 $\rightarrow$ v2: The Critical Fix}
+\textbf{Key insight: Replace probabilistic RMI router with deterministic binary search}
+
+\vspace{0.15cm}
+
+\begin{columns}
+\column{0.48\textwidth}
+\begin{block}{v1 Problem: Probabilistic Routing}
+\scriptsize
+\begin{itemize}
+    \item RMI \textit{predicts} which expert handles a key
+    \item Prediction accuracy: only 25-47\%
+    \item On misprediction: must check neighbors
+    \item Key ranges \textbf{overlap} between experts
+\end{itemize}
+\end{block}
+
+\begin{block}{v2 Solution: Deterministic Routing}
+\scriptsize
+\begin{itemize}
+    \item \textbf{Disjoint} key ranges: Expert $i$ owns $[b_i, b_{i+1})$
+    \item Binary search on boundaries: O(log $m$)
+    \item \textcolor{green!70!black}{100\% routing accuracy guaranteed}
+    \item Write-through buffer for all inserts
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{center}
+\textbf{Performance Comparison:}
+
+\vspace{0.15cm}
+
+\scriptsize
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{v1} & \textbf{v2} \\
+\midrule
+Lookup & 507 ns & 636 ns \\
+Insert & 1.2 M/s & \textcolor{green!70!black}{\textbf{10.2 M/s}} \\
+Routing acc. & 25-47\% & \textcolor{green!70!black}{\textbf{100\%}} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.2cm}
+
+\textbf{The Trade-off:}
+
+\begin{tikzpicture}[scale=0.65]
+% See-saw visualization
+\draw[thick, fill=gray!30] (3,0) -- (3.3,0.4) -- (2.7,0.4) -- cycle;
+\draw[thick] (0.5,0.6) -- (5.5,0.2);
+
+% Left side (slower lookups)
+\draw[thick, fill=red!30] (0.8,0.55) rectangle (1.8,1.1);
+\node[font=\tiny] at (1.3,0.82) {+25\%};
+\node[font=\tiny] at (1.3,0.3) {lookup};
+
+% Right side (faster inserts)  
+\draw[thick, fill=green!30] (4.2,0.25) rectangle (5.2,1.1);
+\node[font=\tiny] at (4.7,0.67) {+750\%};
+\node[font=\tiny] at (4.7,0) {insert};
+\end{tikzpicture}
+\end{center}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{center}
+\colorbox{green!15}{\parbox{12cm}{\centering \scriptsize
+\textbf{Key insight:} We sacrifice 25\% lookup latency to gain 8.5$\times$ write throughput\\
+\textit{Note: 10.2M/s is buffer-only; end-to-end with merges averages 1.0M/s}
+}}
+\end{center}
+\end{frame}
+
+\begin{frame}{WT-HALI: Final Architecture}
+\begin{center}
+\begin{tikzpicture}[
+    box/.style={draw, rectangle, minimum height=0.55cm, font=\scriptsize, rounded corners=2pt},
     arrow/.style={->, thick, >=stealth}
 ]
 
-% Insert path
-\node[box, fill=orange!20] (insert) at (0,3) {INSERT(key, value)};
+% Level 3: Buffer
+\node[box, fill=orange!25, minimum width=5.5cm] (buffer) at (0,3) {
+    \textbf{Level 3: Write-Through Buffer (ART)}
+};
+\node[right=0.15cm of buffer, font=\tiny, text width=4.8cm, align=left] {
+    $\bullet$ All inserts go here: 10M+ ops/s\\
+    $\bullet$ Merge every 2,500 keys (0.5\% of data)\\
+    $\bullet$ Retrain cost: 50-100ms (amortized)
+};
 
-\pause
+% Level 1: Router
+\node[box, fill=blue!25, minimum width=5.5cm] (router) at (0,1.8) {
+    \textbf{Level 1: Binary Search Router}
+};
+\node[right=0.15cm of router, font=\tiny, text width=4.8cm, align=left] {
+    $\bullet$ Sorted boundaries: $[b_0, b_1, ..., b_m]$\\
+    $\bullet$ Expert $i$ owns range $[b_i, b_{i+1})$\\
+    $\bullet$ O(log $m$) routing, \textbf{100\% accuracy}
+};
 
-\node[box, fill=green!20] (buffer) at (0,1.5) {Write-Through Buffer (ART)};
-\draw[arrow] (insert) -- (buffer);
-\node[right=0.1cm of buffer, font=\tiny, align=left] {Fast!\\No retraining\\10-15M ops/sec};
+% Level 2: Experts
+\node[box, fill=green!25, minimum width=1.5cm] (pgm) at (-2,0.5) {PGM};
+\node[box, fill=green!25, minimum width=1.5cm] (rmi) at (0,0.5) {RMI};
+\node[box, fill=green!25, minimum width=1.5cm] (art) at (2,0.5) {ART};
 
-\pause
+\node[below=0.03cm of pgm, font=\tiny] {R$^2 > 0.95$};
+\node[below=0.03cm of rmi, font=\tiny] {R$^2$: 0.80-0.95};
+\node[below=0.03cm of art, font=\tiny] {R$^2 \leq 0.80$};
 
-% Query path
-\node[box, fill=orange!20] (query) at (6,3) {FIND(key)};
+% Arrows
+\draw[arrow] (buffer) -- node[left, font=\tiny] {miss} (router);
+\draw[arrow] (router) -- (pgm);
+\draw[arrow] (router) -- (rmi);
+\draw[arrow] (router) -- (art);
 
-\pause
-
-\node[box, fill=blue!20] (check) at (6,1.5) {1. Check buffer first};
-\draw[arrow] (query) -- (check);
-
-\pause
-
-\node[box, fill=purple!20] (learned) at (6,0) {2. Query learned structure};
-\draw[arrow] (check) -- (learned);
-\node[right=0.1cm of learned, font=\tiny] {If not in buffer};
+% Input labels
+\node[above left=0.2cm and 0.8cm of buffer, font=\scriptsize, red] (ins) {INSERT};
+\node[above right=0.2cm and 0.8cm of buffer, font=\scriptsize, blue] (look) {LOOKUP};
+\draw[arrow, red, dashed] (ins) -- (buffer);
+\draw[arrow, blue, dashed] (look) -- (buffer);
 
 \end{tikzpicture}
 \end{center}
 
-\pause
+\vspace{0.1cm}
 
-\vspace{0.2cm}
-
-\textbf{Benefit:} Writes are decoupled from learned structure → 140x faster than RMI/PGM!
-
-\end{frame}
-
-\begin{frame}{Level 1: Guaranteed-Correct Routing}
-
-\textbf{Problem We Solved:} How to route keys to the right expert?
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{What We Tried (HALIv1):} Linear model to predict expert ID
-
-\pause
-
-\textcolor{red}{\textbf{Failed!}} Router accuracy: 25-47\% (worse than random)
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Why It Failed:} Learned models can't guarantee correctness
-
-\pause
-
-\begin{center}
-\footnotesize
-\begin{tabular}{@{}ll@{}}
-\toprule
-\textbf{Approach} & \textbf{Result} \\
-\midrule
-Learned router & 25-47\% accuracy → O(m) fallback → 507 ns \\
-\pause
-Binary search & 100\% accuracy → O(log m) → \textcolor{green}{54.7 ns} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{The Lesson:} Use traditional structures for critical paths (routing)!
-
-\end{frame}
-
-\begin{frame}{Level 2: Adaptive Experts}
-
-\textbf{Question:} Not all data is the same. Should we use one model for everything?
-
-\pause
-
-\textbf{Answer:} No! Analyze data and pick the best expert per partition.
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Example:} Imagine three datasets...
-
-\pause
-
-\begin{columns}[t]
-\column{0.33\textwidth}
-\begin{center}
-\textbf{Linear Data}\\
-\vspace{0.2cm}
-\begin{tikzpicture}[scale=0.4]
-\begin{axis}[width=3.5cm, height=3cm, xlabel={Key}, ylabel={Pos}, xmin=0, xmax=100, ymin=0, ymax=100]
-\addplot[color=blue, mark=*, only marks, mark size=1pt] coordinates {(10,10)(20,20)(30,30)(40,40)(50,50)(60,60)(70,70)(80,80)(90,90)};
-\end{axis}
-\end{tikzpicture}\\
-\pause
-\textcolor{green}{Use PGM-Index}\\
-R² > 0.95
-\end{center}
-
-\column{0.33\textwidth}
-\begin{center}
-\textbf{Complex Data}\\
-\vspace{0.2cm}
-\begin{tikzpicture}[scale=0.4]
-\begin{axis}[width=3.5cm, height=3cm, xlabel={Key}, ylabel={Pos}, xmin=0, xmax=100, ymin=0, ymax=100]
-\addplot[color=blue, mark=*, only marks, mark size=1pt] coordinates {(10,5)(20,15)(30,40)(40,42)(50,45)(60,70)(70,72)(80,90)(90,95)};
-\end{axis}
-\end{tikzpicture}\\
-\pause
-\textcolor{orange}{Use RMI}\\
-0.80 < R² ≤ 0.95
-\end{center}
-
-\column{0.33\textwidth}
-\begin{center}
-\textbf{Random Data}\\
-\vspace{0.2cm}
-\begin{tikzpicture}[scale=0.4]
-\begin{axis}[width=3.5cm, height=3cm, xlabel={Key}, ylabel={Pos}, xmin=0, xmax=100, ymin=0, ymax=100]
-\addplot[color=blue, mark=*, only marks, mark size=1pt] coordinates {(10,60)(20,15)(30,80)(40,25)(50,90)(60,10)(70,45)(80,70)(90,35)};
-\end{axis}
-\end{tikzpicture}\\
-\pause
-\textcolor{red}{Use ART}\\
-R² ≤ 0.80
-\end{center}
-\end{columns}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Result:} Each partition gets the most efficient structure for its data!
-
-\end{frame}
-
-\begin{frame}{Putting It All Together: WT-HALI Lookup}
-
-\textbf{Example:} Find key 12345 in WT-HALI
-
-\pause
-
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Lookup Path:}
 \begin{enumerate}
-    \item<2-> \textbf{Check write-through buffer} \\
-    \textcolor{gray}{Hash lookup in ART: $\sim$10-15 ns} \\
-    \textcolor{gray}{Not found? Continue...}
-
-    \pause[3]
-
-    \item<3-> \textbf{Binary search routing} \\
-    \textcolor{gray}{Find correct expert partition: O(log m) = $\sim$3-5 comparisons, $\sim$5-10 ns} \\
-    \textcolor{gray}{Example: key 12345 → Expert 5 (range 12000-13000)}
-
-    \pause[4]
-
-    \item<4-> \textbf{Query expert model} \\
-    \textcolor{gray}{Expert 5 is PGM-Index → predict position → binary search} \\
-    \textcolor{gray}{$\sim$30-40 ns}
-
-    \pause[5]
+    \tiny
+    \item Check ART buffer first (100-200ns)
+    \item If miss: binary search router finds expert
+    \item Expert predicts position $\rightarrow$ local binary search
 \end{enumerate}
 
-\pause[5]
+\textbf{Insert Path:}
+\begin{enumerate}
+    \tiny
+    \item Insert directly into ART buffer — O(log $n$)
+    \item When buffer $>$ 2,500 keys: merge + retrain experts
+\end{enumerate}
 
-\vspace{0.3cm}
+\column{0.48\textwidth}
+\textbf{Adaptive Expert Selection:}
+\begin{itemize}
+    \tiny
+    \item R$^2$ coefficient measures linear fit quality
+    \item High R$^2$ ($>$0.95): use PGM (fast, memory-efficient)
+    \item Medium R$^2$ (0.80-0.95): use RMI (handles complexity)
+    \item Low R$^2$ ($\leq$0.80): use ART (fallback, always works)
+\end{itemize}
 
-\textbf{Total:} 10-15 + 5-10 + 30-40 = \textcolor{green}{\textbf{45-65 ns}}
-
-\pause
-
-(Actual measured: 54.7 ns on clustered data)
-
+\textbf{Clustered dataset distribution:}\\
+{\tiny 70\% PGM, 20\% RMI, 10\% ART experts}
+\end{columns}
 \end{frame}
 
 % ============================================================
-% SECTION 3: PERFORMANCE RESULTS
+% SECTION 4: IMPLEMENTATION
 % ============================================================
-\section{Performance Evaluation}
 
-\begin{frame}{Benchmark Setup}
+\begin{frame}{Implementation \& Codebase}
+\begin{columns}
+\column{0.45\textwidth}
+\textbf{Project Structure:}
+\begin{center}
+\scriptsize
+\begin{tabular}{ll}
+\texttt{HALI/} & \\
+\texttt{~~src/} & \textit{Source code} \\
+\texttt{~~~~btree.cpp} & \textit{B+Tree} \\
+\texttt{~~~~art.cpp} & \textit{Adaptive Radix Tree} \\
+\texttt{~~~~hash.cpp} & \textit{Hash table} \\
+\texttt{~~~~pgm.cpp} & \textit{PGM-Index} \\
+\texttt{~~~~rmi.cpp} & \textit{RMI model} \\
+\texttt{~~~~wt\_hali.cpp} & \textit{Our contribution} \\
+\texttt{~~bench/} & \textit{Benchmarks} \\
+\texttt{~~~~workloads.cpp} & \textit{Driver} \\
+\texttt{~~data/} & \textit{Datasets} \\
+\texttt{~~~~generators.py} & \textit{Generation} \\
+\texttt{~~Dockerfile} & \textit{Reproducible env} \\
+\end{tabular}
+\end{center}
 
-\textbf{System:}
+\column{0.52\textwidth}
+\textbf{Implementation Details:}
 \begin{itemize}
-    \item AMD Ryzen 9 7940HS @ 3.99 GHz (16 cores)
-    \item 7.4 GB RAM
-    \item Ubuntu 22.04 in Docker (GCC 11.4, -O3)
+    \scriptsize
+    \item \textbf{Language:} C++17, $\sim$4000 LOC total
+    \item \textbf{Dependencies:} STL only (no external libraries)
+    \item \textbf{Compiler:} GCC 11.4, flags: \texttt{-O3 -march=native}
+    \item \textbf{Environment:} Docker container for reproducibility
 \end{itemize}
 
-\pause
+\vspace{0.15cm}
 
-\vspace{0.3cm}
-
-\textbf{Datasets:} 500,000 keys each
+\textbf{Index Configurations:}
 \begin{itemize}
-    \item Clustered (5 normal distributions with gaps)
-    \item Lognormal ($\mu$=10, $\sigma$=2)
-    \item Sequential (monotonic with gaps)
-    \item Uniform (random)
-    \item Mixed (40\% uniform + 40\% normal + 20\% exponential)
-    \item Zipfian (power-law $\alpha$=1.5)
+    \scriptsize
+    \item \textbf{B+Tree:} 64B nodes, fanout 16
+    \item \textbf{ART:} 4 node types (Node4/16/48/256)
+    \item \textbf{PGM:} $\epsilon=64$ max error bound
+    \item \textbf{RMI:} 2-layer hierarchy, 100 experts
+    \item \textbf{WT-HALI:} 100 experts, 2500-key buffer threshold
 \end{itemize}
 
-\pause
+\vspace{0.15cm}
 
-\vspace{0.3cm}
-
-\textbf{Baselines:} B+Tree, Hash Table, ART, PGM-Index, RMI
-
+\begin{center}
+\colorbox{blue!15}{\parbox{6cm}{\centering
+\scriptsize \textbf{Repository:}\\
+\href{https://github.com/jdhruv1503/HALI}{\texttt{github.com/jdhruv1503/HALI}}\\
+MIT License $\bullet$ Docker build included
+}}
+\end{center}
+\end{columns}
 \end{frame}
 
-\begin{frame}{Main Result: WT-HALI-Speed Performance}
+\begin{frame}{Experimental Setup}
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Hardware \& Software:}
+\begin{itemize}
+    \scriptsize
+    \item AMD Ryzen 9 @ 3.99 GHz
+    \item 8 GB RAM (Docker container)
+    \item Ubuntu 22.04, GCC 11.4
+    \item \textbf{Single-threaded}, pinned to core 0
+    \item Hyperthreading disabled during benchmarks
+\end{itemize}
 
-\begin{table}
-\centering
-\small
-\begin{tabular}{@{}lrrr@{}}
+\vspace{0.15cm}
+
+\textbf{Datasets (500K 64-bit keys each):}
+\begin{itemize}
+    \scriptsize
+    \item \textbf{Clustered:} Hot spots with irregular gaps
+    \item \textbf{Lognormal:} Real-world-like right skew
+    \item \textbf{Sequential:} Monotonically increasing (timestamps)
+    \item \textbf{Uniform:} Uniformly random distribution
+    \item \textbf{Mixed:} Combination of multiple patterns
+    \item \textbf{Zipfian:} Power-law frequency distribution
+\end{itemize}
+
+\column{0.48\textwidth}
+\textbf{Workloads (100K operations each):}
+\begin{itemize}
+    \scriptsize
+    \item \textbf{Read-Heavy:} 95\% find, 5\% insert
+    \item \textbf{Write-Heavy:} 10\% find, 90\% insert
+    \item \textbf{Mixed:} 50\% find, 50\% insert
+\end{itemize}
+
+\vspace{0.15cm}
+
+\textbf{Methodology:}
+\begin{itemize}
+    \scriptsize
+    \item 3 trials per experiment, \textbf{median} reported
+    \item 10K warmup operations discarded
+    \item Fixed random seeds for reproducibility
+    \item 100\% correctness validation (all lookups verified)
+\end{itemize}
+
+\vspace{0.15cm}
+
+\begin{center}
+\colorbox{gray!15}{\parbox{5cm}{\centering \scriptsize
+\textbf{Experiment Matrix:}\\
+6 indexes $\times$ 6 datasets $\times$ 3 workloads\\
+= \textbf{108 total experiments}\\
+$\times$ 3 trials = 324 benchmark runs
+}}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% SECTION 5: RESULTS
+% ============================================================
+
+\begin{frame}{Master Results: Clustered Dataset}
+\textbf{Comprehensive comparison across all metrics}
+
+\vspace{0.15cm}
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}l|rrr|rrr@{}}
 \toprule
-\textbf{Index} & \textbf{Lookup (ns)} & \textbf{Inserts (M/sec)} & \textbf{Memory (B/key)} \\
+& \multicolumn{3}{c|}{\textbf{Read-Heavy (95/5)}} & \multicolumn{3}{c}{\textbf{Write-Heavy (10/90)}} \\
+\textbf{Index} & \textbf{Lookup} & \textbf{Insert} & \textbf{Memory} & \textbf{Lookup} & \textbf{Insert} & \textbf{Memory} \\
+& (ns) & (M/s) & (B/key) & (ns) & (M/s) & (B/key) \\
 \midrule
-\pause
-B+Tree & 17.5 & 19.1 & 19.20 \\
-\pause
-\rowcolor{green!20}
-\textbf{WT-HALI-Speed} & \textbf{54.7} & \textbf{14.7} & \textbf{17.25} \\
-\pause
-RMI & 93.7 & 0.10 & 16.00 \\
-\pause
-PGM-Index & 117.9 & 0.09 & 16.00 \\
-\pause
-HashTable & 158.9 & 11.1 & 41.78 \\
-\pause
-ART & 309.9 & 15.6 & 20.00 \\
+B+Tree & \cellcolor{green!20}\textbf{22.7} & 9.4 & 19.2 & \cellcolor{green!20}\textbf{22.7} & \cellcolor{green!20}\textbf{17.4} & 19.2 \\
+Hash & 183.3 & 10.4 & 41.8 & 183.3 & 13.9 & 41.8 \\
+ART & 393.9 & 6.4 & 20.0 & 393.9 & 13.7 & 20.0 \\
+\midrule
+RMI & 73.1 & 3.1 & \cellcolor{green!20}\textbf{16.0} & 73.1 & \cellcolor{red!20}0.19 & \cellcolor{green!20}\textbf{16.0} \\
+PGM & 155.7 & 2.7 & \cellcolor{green!20}\textbf{16.0} & 155.7 & \cellcolor{red!20}0.18 & \cellcolor{green!20}\textbf{16.0} \\
+\midrule
+\rowcolor{yellow!25}
+WT-HALI & 635.7 & 1.0 & 16.7 & 635.7 & 1.0 & 16.7 \\
 \bottomrule
 \end{tabular}
-\caption{Clustered dataset, 500K keys}
-\end{table}
+\end{center}
 
-\pause
+\vspace{0.15cm}
 
-\vspace{0.3cm}
-
-\textbf{Key Achievements:}
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Key Observations:}
 \begin{itemize}
-    \item<8-> Only 8\% memory overhead vs pure learned indexes
-    \item<9-> \textbf{140x faster inserts} than RMI/PGM
-    \item<10-> 100\% correctness (all validation tests pass)
+    \scriptsize
+    \item B+Tree dominates on raw speed (22ns, 17M/s)
+    \item RMI/PGM: best memory (16 B/key), worst writes
+    \item WT-HALI: \textbf{5$\times$ better writes} than PGM/RMI
+    \item Hash: fast writes but 2.5$\times$ memory overhead
 \end{itemize}
 
+\column{0.48\textwidth}
+\textbf{WT-HALI Trade-off Analysis:}
+\begin{itemize}
+    \scriptsize
+    \item Lookup: 28$\times$ slower than B+Tree
+    \item Insert: 17$\times$ slower than B+Tree
+    \item Memory: 13\% savings (16.7 vs 19.2 B/key)
+    \item \textbf{Sweet spot:} Memory-constrained + moderate writes
+\end{itemize}
+\end{columns}
+
+{\tiny \textit{Error margin: $\pm$5\% across trials. Green = best, Red = worst in category.}}
 \end{frame}
 
-\begin{frame}{Memory vs Latency Tradeoff}
+\begin{frame}{Dataset Sensitivity Analysis}
+\textbf{WT-HALI performance depends heavily on data distribution}
+
+\vspace{0.1cm}
 
 \begin{center}
 \begin{tikzpicture}
 \begin{axis}[
-    xlabel={Memory (bytes/key)},
-    ylabel={Lookup Latency (ns)},
-    xmin=15, xmax=45,
-    ymin=0, ymax=350,
-    width=10cm, height=7cm,
-    legend pos=north east,
-    grid=major
+    ybar,
+    width=12cm, height=4.2cm,
+    ylabel={\footnotesize Lookup Latency (ns)},
+    symbolic x coords={Clustered, Lognormal, Sequential, Uniform, Mixed, Zipfian},
+    xtick=data,
+    xticklabel style={font=\scriptsize},
+    ymin=0, ymax=700,
+    legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+    bar width=10pt,
+    ylabel style={font=\footnotesize}
 ]
-
-% Pareto frontier
-\addplot[color=green!70!black, dashed, thick] coordinates {
-    (16,93.7) (17.25,54.7) (19.2,17.5)
-};
-\addlegendentry{Pareto Frontier}
-
-% Points
-\addplot[only marks, mark=square*, mark size=3pt, color=blue] coordinates {(19.2,17.5)};
-\addlegendentry{B+Tree}
-
-\addplot[only marks, mark=*, mark size=4pt, color=green!70!black] coordinates {(17.25,54.7)};
-\addlegendentry{WT-HALI-Speed}
-
-\addplot[only marks, mark=triangle*, mark size=3pt, color=red] coordinates {(16,93.7)(16,117.9)};
-\addlegendentry{RMI/PGM}
-
-\addplot[only marks, mark=diamond*, mark size=3pt, color=orange] coordinates {(41.78,158.9)};
-\addlegendentry{HashTable}
-
-\addplot[only marks, mark=square*, mark size=3pt, color=purple] coordinates {(20,309.9)};
-\addlegendentry{ART}
-
+\addplot[fill=blue!50] coordinates {(Clustered,22.7) (Lognormal,28.3) (Sequential,20.2) (Uniform,22.2) (Mixed,21.1) (Zipfian,19.6)};
+\addplot[fill=orange!50] coordinates {(Clustered,635.7) (Lognormal,391.1) (Sequential,110.9) (Uniform,132.9) (Mixed,247.4) (Zipfian,79.1)};
+\legend{B+Tree, WT-HALI}
 \end{axis}
 \end{tikzpicture}
 \end{center}
 
-\textbf{WT-HALI-Speed is ON the Pareto frontier!}
-
-\end{frame}
-
-\begin{frame}{WT-HALI Configurations: Speed vs Memory vs Balanced}
-
-\textbf{Three configurations for different use cases:}
-
-\pause
-
-\vspace{0.3cm}
-
-\begin{table}
-\centering
-\footnotesize
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Config} & \textbf{Experts} & \textbf{WT Buffer} & \textbf{Best For} \\
-\midrule
-\pause
-\textbf{Speed} & 4-6 & HashMap & Latency-sensitive apps \\
-& & (fast) & (web servers, caching) \\
-\pause
-\textbf{Balanced} & $\sqrt{n}/100$ & ART & General-purpose \\
-& & (ordered) & (databases, file systems) \\
-\pause
-\textbf{Memory} & $2\sqrt{n}/100$ & ART & Memory-constrained \\
-& & (compact) & (embedded, IoT) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Performance Trade-offs:}
-
-\begin{itemize}
-    \item<6-> \textbf{Speed:} 54.7 ns lookups, 14.7M inserts/sec, 17.25 B/key → \textcolor{green}{100\% correct}
-    \item<7-> \textbf{Memory:} 127.6 ns lookups, 10.6M inserts/sec, 19.75 B/key → \textcolor{green}{100\% correct}
-    \item<8-> \textbf{Balanced:} 348.3 ns lookups, 7.1M inserts/sec, 22.50 B/key → \textcolor{orange}{Edge case}
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}{When to Use WT-HALI?}
+\vspace{0.1cm}
 
 \begin{columns}
-\column{0.5\textwidth}
-\textbf{WT-HALI Excels When:}
-\begin{itemize}
-    \item<1-> \textcolor{green}{\checkmark} Mixed read/write workload
-    \item<2-> \textcolor{green}{\checkmark} Clustered or sequential data
-    \item<3-> \textcolor{green}{\checkmark} Memory budget: 17-20 B/key
-    \item<4-> \textcolor{green}{\checkmark} Need 10M+ inserts/sec
-    \item<5-> \textcolor{green}{\checkmark} Require 100\% correctness
-\end{itemize}
+\column{0.48\textwidth}
+\textbf{B+Tree:} Consistent 20-28ns (1.4$\times$ variance)\\
+{\scriptsize Works equally well on any distribution}
 
-\pause[6]
-
-\vspace{0.3cm}
-
-\textbf{Example:} File system metadata index
-\begin{itemize}
-    \item<7-> Clustered paths (e.g., /home/user/...)
-    \item<8-> Frequent file creation (writes)
-    \item<9-> Path lookups (reads)
-\end{itemize}
-
-\column{0.5\textwidth}
-\pause[10]
-
-\textbf{Use B+Tree Instead When:}
-\begin{itemize}
-    \item<10-> Need absolute fastest lookups (<20 ns)
-    \item<11-> Dataset < 100K keys
-    \item<12-> Need range queries
-\end{itemize}
-
-\pause[13]
-
-\vspace{0.3cm}
-
-\textbf{Use RMI/PGM Instead When:}
-\begin{itemize}
-    \item<13-> 99\% read-only workload
-    \item<14-> Extreme memory constraints
-    \item<15-> Can tolerate slow writes
-\end{itemize}
-
-\pause[16]
-
-\vspace{0.3cm}
-
-\textbf{Use ALEX Instead When:}
-\begin{itemize}
-    \item<16-> Need gapped array structure
-    \item<17-> Specific access patterns known
-\end{itemize}
-
+\column{0.48\textwidth}
+\textbf{WT-HALI:} 79-636ns (8$\times$ variance)\\
+{\scriptsize Best on Sequential (111ns), worst on Clustered (636ns)}
 \end{columns}
 
+\vspace{0.1cm}
+
+\begin{center}
+\colorbox{yellow!20}{\parbox{11cm}{\centering \footnotesize 
+\textbf{Implication:} WT-HALI excels on Sequential/Zipfian data (high R$^2$ $\rightarrow$ more PGM experts)\\
+Struggles on Clustered data (irregular patterns $\rightarrow$ more ART fallback)
+}}
+\end{center}
 \end{frame}
 
-\begin{frame}{Performance Across Different Datasets}
-
-\begin{table}
-\centering
-\tiny
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-\textbf{Dataset} & \textbf{WT-HALI-Speed} & \textbf{B+Tree} & \textbf{RMI} & \textbf{Speedup vs RMI} \\
-\midrule
-\pause
-Clustered & 54.7 ns & 17.5 ns & 93.7 ns & \textcolor{green}{1.7x faster} \\
-\pause
-Sequential & 136.1 ns & 21.3 ns & 141.4 ns & \textcolor{green}{1.04x faster} \\
-\pause
-Lognormal & 250.0 ns & 20.3 ns & 82.5 ns & \textcolor{red}{3.0x slower} \\
-\pause
-Mixed & 122.5 ns & ? ns & ? ns & ? \\
-\pause
-Uniform & 134.9 ns & ? ns & ? ns & ? \\
-\bottomrule
-\end{tabular}
-\caption{Mean lookup latency comparison (500K keys)}
-\end{table}
-
-\pause
-
-\vspace{0.3cm}
-
-\begin{block}{Key Insight}
-\textbf{WT-HALI performs best on clustered and sequential data}\\
-(Common in real-world workloads: file paths, timestamps, IDs)
-\end{block}
-
-\pause
+\begin{frame}{Trade-off Analysis: Memory vs Performance}
+\textbf{Where does WT-HALI fit in the design space?}
 
 \vspace{0.2cm}
 
-\textbf{TODO:} Complete benchmarks on all datasets to identify optimal scenarios
-
-\end{frame}
-
-\begin{frame}{Write-Through Buffer Size: How Much is Enough?}
-
-\textbf{Question:} What's the optimal buffer size?
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Trade-offs:}
-
-\begin{itemize}
-    \item<2-> \textbf{Larger buffer (10\%):}
-    \begin{itemize}
-        \item<3-> More keys handled in fast path
-        \item<4-> But: Higher memory overhead
-        \item<5-> But: More keys to merge during rebuild
-    \end{itemize}
-
-    \item<6-> \textbf{Smaller buffer (1\%):}
-    \begin{itemize}
-        \item<7-> Lower memory overhead
-        \item<8-> Faster merge operations
-        \item<9-> But: More frequent lookups hit slow path
-    \end{itemize}
-\end{itemize}
-
-\pause[10]
-
-\vspace{0.3cm}
-
-\textbf{Current Default:} 1\% (merge trigger)
-
-\pause
-
-\textbf{TODO:} Systematic evaluation of 1\%, 5\%, 10\% buffer sizes
-
-\end{frame}
-
-\begin{frame}{Expert Count: How Many Partitions?}
-
-\textbf{Current Formula:} $m = \max(4, \lfloor\sqrt{n}/100\rfloor \times (0.5 + 1.5 \times c))$
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Examples:}
-
-\begin{table}
-\centering
-\small
-\begin{tabular}{@{}lrrr@{}}
+\begin{center}
+\scriptsize
+\begin{tabular}{lcccl}
 \toprule
-\textbf{Keys (n)} & \textbf{Speed (c=0.0)} & \textbf{Balanced (c=0.5)} & \textbf{Memory (c=1.0)} \\
+\textbf{Index} & \textbf{Memory} & \textbf{Lookup} & \textbf{Insert} & \textbf{Best For} \\
+& (B/key) & (ns) & (M/s) & \\
 \midrule
-\pause
-100K & 5 experts & 10 experts & 20 experts \\
-\pause
-500K & 11 experts & 22 experts & 45 experts \\
-\pause
-1M & 15 experts & 31 experts & 63 experts \\
+B+Tree & 19.2 & \textcolor{green!70!black}{22.7} & \textcolor{green!70!black}{17.4} & General purpose \\
+Hash & 41.8 & 183.3 & 13.9 & Point lookups, memory OK \\
+ART & 20.0 & 393.9 & 13.7 & Variable-length keys \\
+\midrule
+RMI & \textcolor{green!70!black}{16.0} & 73.1 & \textcolor{red}{0.19} & Read-only, low memory \\
+PGM & \textcolor{green!70!black}{16.0} & 155.7 & \textcolor{red}{0.18} & Read-only, low memory \\
+\midrule
+\rowcolor{yellow!20}
+WT-HALI & 16.7 & 635.7 & 1.0 & \textbf{Memory-constrained + writes} \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{center}
 
-\pause
+\vspace{0.2cm}
 
-\vspace{0.3cm}
-
-\textbf{Impact:}
+\begin{columns}
+\column{0.48\textwidth}
+\begin{block}{WT-HALI Wins When:}
+\scriptsize
 \begin{itemize}
-    \item<6-> More experts → Better data fit, lower error
-    \item<7-> More experts → Higher routing overhead (O(log m))
-    \item<8-> More experts → Higher build time
+    \item Memory budget $<$ 17 B/key \textbf{AND}
+    \item Need $>$ 180K writes/sec \textbf{AND}
+    \item Can tolerate $>$ 500ns lookups
 \end{itemize}
-
-\pause[9]
-
-\textbf{TODO:} Find optimal scaling factor for different dataset sizes
-
-\end{frame}
-
-% ============================================================
-% SECTION 4: LESSONS LEARNED
-% ============================================================
-\section{Lessons Learned}
-
-\begin{frame}{What We Learned: Failed Approach (HALIv1)}
-
-\textbf{Initial Idea:} Use learned RMI model to route keys to experts
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Result:} \textcolor{red}{Catastrophic failure}
-\begin{itemize}
-    \item Router prediction accuracy: 25-47\%
-    \item Required O(m) fallback search across all experts
-    \item 507 ns lookups (29x slower than B+Tree!)
-\end{itemize}
-
-\pause
-
-\vspace{0.3cm}
-
-\begin{block}{Critical Lesson}
-\textbf{Learned models cannot guarantee correctness.}\\
-Use them for approximation (data prediction), not for critical paths (routing).
 \end{block}
 
-\pause
+\column{0.48\textwidth}
+\begin{block}{WT-HALI Loses When:}
+\scriptsize
+\begin{itemize}
+    \item Need $<$ 100ns lookups (use B+Tree/RMI)
+    \item Need $>$ 5M writes/sec (use B+Tree)
+    \item Memory is not a constraint (use B+Tree)
+\end{itemize}
+\end{block}
+\end{columns}
 
-\vspace{0.3cm}
+\vspace{0.1cm}
 
-\textbf{The Fix:} Binary search routing → 89\% faster (507 ns → 54.7 ns)
-
+\begin{center}
+\colorbox{blue!10}{\scriptsize \textbf{Key finding:} WT-HALI occupies a narrow but real niche: memory-constrained systems with moderate write requirements}
+\end{center}
 \end{frame}
 
-\begin{frame}{Design Principles for Hybrid Indexes}
+% ============================================================
+% SECTION 6: RECOMMENDATIONS
+% ============================================================
+
+\begin{frame}{When to Use What: Practical Guidelines}
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}p{3.5cm}p{2.2cm}p{5.5cm}@{}}
+\toprule
+\textbf{Scenario} & \textbf{Best Choice} & \textbf{Rationale} \\
+\midrule
+General purpose & \textbf{B+Tree} & Fastest, most predictable, battle-tested \\
+Read-heavy, memory OK & \textbf{B+Tree} & 22ns lookups, 17M writes, range support \\
+Read-heavy, low memory & \textbf{RMI/PGM} & 73-156ns lookups at 16 B/key \\
+Write-heavy & \textbf{B+Tree/Hash} & 13-17M inserts/sec \\
+\rowcolor{yellow!20}
+Memory-constrained + writes & \textbf{WT-HALI} & 1M ins/sec at 16.7 B/key (5$\times$ better than PGM) \\
+\rowcolor{yellow!20}
+Sequential/time-series data & \textbf{WT-HALI} & High R$^2$ $\rightarrow$ fast PGM experts (79-111ns) \\
+Range queries needed & \textbf{B+Tree} & Only option with efficient range support \\
+Concurrent access & \textbf{B+Tree} & Fine-grained locking, well-understood \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{columns}
+\column{0.48\textwidth}
+\begin{block}{WT-HALI Sweet Spot}
+\scriptsize
+\begin{itemize}
+    \item Embedded/IoT devices (memory $<$ 20 B/key)
+    \item Time-series databases (sequential timestamps)
+    \item Append-mostly log systems (90\%+ writes)
+    \item Edge computing with memory constraints
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{Avoid WT-HALI When}
+\scriptsize
+\begin{itemize}
+    \item Need $<$50ns lookups (latency-critical)
+    \item Need $>$10M writes/sec (high throughput)
+    \item Random/clustered data distribution
+    \item Production-critical systems (use proven B+Tree)
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ============================================================
+% SECTION 7: LESSONS AND CONCLUSION
+% ============================================================
+
+\begin{frame}{Key Lessons for OS Design}
+\begin{columns}
+\column{0.55\textwidth}
+\textbf{Three Core Findings:}
+
+\vspace{0.15cm}
 
 \begin{enumerate}
-    \item<1-> \textbf{Separate Concerns}
+    \item \textbf{Write-through buffering works}
     \begin{itemize}
-        \item Routing: Traditional (binary search) → guarantees
-        \item Data approximation: Learned (PGM/RMI) → efficiency
-        \item Updates: Traditional (write-through buffer) → throughput
+        \scriptsize
+        \item 5$\times$ improvement over pure learned indexes
+        \item Still 17$\times$ slower than B+Tree writes
+        \item Amortized retrain cost is manageable (50-100ms)
     \end{itemize}
-
-    \item<2-> \textbf{Adapt to Data}
+    
+    \vspace{0.1cm}
+    
+    \item \textbf{Routing accuracy is critical}
     \begin{itemize}
-        \item Linear data → PGM-Index (compact)
-        \item Complex data → RMI (powerful)
-        \item Random data → ART (robust fallback)
+        \scriptsize
+        \item v1 probabilistic: 25-47\% $\rightarrow$ unusable in practice
+        \item v2 deterministic: 100\% $\rightarrow$ predictable behavior
+        \item Worth the +25\% lookup overhead for correctness
     \end{itemize}
-
-    \item<3-> \textbf{Validate Everything}
+    
+    \vspace{0.1cm}
+    
+    \item \textbf{Memory savings often insufficient}
     \begin{itemize}
-        \item 100\% correctness on all datasets
-        \item Production-scale testing (500K+ keys)
-        \item Edge case discovery and fixes
+        \scriptsize
+        \item Only 13\% savings (16.7 vs 19.2 B/key)
+        \item 28$\times$ lookup slowdown is steep price
+        \item Only worthwhile in truly constrained scenarios
     \end{itemize}
 \end{enumerate}
 
-\end{frame}
+\column{0.42\textwidth}
+\textbf{OS Design Principles Validated:}
 
-% ============================================================
-% HYPERPARAMETER OPTIMIZATION
-% ============================================================
-\section{Hyperparameter Optimization Experiments}
-
-\begin{frame}{Systematic Configuration Search}
-
-\textbf{Research Question:} What are the optimal compression level and buffer size for different workloads?
-
-\pause
-
-\vspace{0.5cm}
-
-\textbf{Experimental Design:}
-\begin{itemize}
-    \item<2-> \textbf{50 configurations tested} across 3 experimental phases
-    \item<3-> Automated experiment runner with Docker-based reproducibility
-    \item<4-> All experiments: 100\% success rate, 0 failures
-\end{itemize}
-
-\pause[5]
-
-\vspace{0.5cm}
-
-\textbf{Phases:}
-\begin{enumerate}
-    \item<5-> \textbf{Phase 2.1:} Compression level sweep (30 configs)
-    \item<6-> \textbf{Phase 2.2:} Buffer size sweep (15 configs)
-    \item<7-> \textbf{Phase 2.3:} Scaling analysis (5 configs)
-\end{enumerate}
-
-\end{frame}
-
-\begin{frame}{Phase 2.1: Compression Level Sweep (30 Experiments)}
-
-\textbf{Test Matrix:}
-\begin{itemize}
-    \item 5 compression levels: 0.0, 0.25, 0.5, 0.75, 1.0
-    \item 3 dataset sizes: 100K, 500K, 1M keys
-    \item 2 datasets: clustered, sequential
-    \item Fixed buffer: 1\%
-\end{itemize}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Key Finding:} Medium compression (0.25) optimal for production workloads
-
-\pause
-
-\begin{table}
-\centering
-\small
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Dataset Size} & \textbf{Optimal Comp.} & \textbf{Lookup (ns)} & \textbf{Memory (B/key)} \\
-\midrule
-100K keys & 0.50 & 98.2 & 18.50 \\
-500K keys & \textbf{0.25} & \textbf{128.2} & \textbf{17.75} \\
-1M keys & \textbf{0.25} & \textbf{190.5} & \textbf{17.75} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\end{frame}
-
-\begin{frame}{Compression Level Heatmap}
+\vspace{0.15cm}
 
 \begin{center}
-\includegraphics[width=0.85\textwidth]{../results/analysis/compression_heatmap.png}
-\end{center}
-
-\pause
-
-\textbf{Insight:} Light compression (0.25) provides best balance for 500K-1M keys
-
-\end{frame}
-
-\begin{frame}{Phase 2.2: Buffer Size Sweep (15 Experiments)}
-
-\textbf{Test Matrix:}
-\begin{itemize}
-    \item 5 buffer sizes: 0.5\%, 1\%, 2\%, 5\%, 10\%
-    \item 3 workload types: read\_heavy, mixed, write\_heavy
-    \item Fixed compression: 0.5 (balanced)
-    \item Dataset: clustered 500K keys
-\end{itemize}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Key Finding:} Larger buffers benefit extreme workloads, smaller buffers for mixed
-
-\pause
-
-\begin{table}
-\centering
-\small
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Workload} & \textbf{Optimal Buffer} & \textbf{Lookup (ns)} & \textbf{Throughput (M/s)} \\
-\midrule
-Read-Heavy & 5.0\% & 162.2 & 7.8 \\
-\textbf{Mixed} & \textbf{0.5\%} & \textbf{250.5} & \textbf{7.5} \\
-Write-Heavy & 5.0\% & 302.1 & 10.0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\end{frame}
-
-\begin{frame}{Buffer Size Impact}
-
-\begin{center}
-\includegraphics[width=0.85\textwidth]{../results/analysis/buffer_impact.png}
-\end{center}
-
-\pause
-
-\textbf{Insight:} Mixed workloads prefer minimal buffer overhead (0.5\%)
-
-\end{frame}
-
-\begin{frame}{Phase 2.3: Scaling Analysis (5 Experiments)}
-
-\textbf{Test Matrix:}
-\begin{itemize}
-    \item 5 dataset sizes: 100K, 250K, 500K, 750K, 1M keys
-    \item Configuration: WT-HALI-Speed (compression=0.0, buffer=1\%)
-    \item Dataset: clustered
-    \item Workload: mixed
-\end{itemize}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Key Finding:} Sub-linear scaling, optimal range 250K-2M keys
-
-\end{frame}
-
-\begin{frame}{Scaling Behavior}
-
-\begin{center}
-\includegraphics[width=0.85\textwidth]{../results/analysis/scaling_behavior.png}
-\end{center}
-
-\pause
-
-\textbf{Insight:} Lookup latency scales sub-linearly with dataset size
-
-\end{frame}
-
-\begin{frame}{Automatic Configuration Selector}
-
-\textbf{Result:} Auto-generated optimal configuration selector
-
-\pause
-
-\begin{lstlisting}[language=C++,basicstyle=\ttfamily\tiny]
-#include "wt_hali_config_selector.h"
-
-// Automatic configuration based on experimental data
-auto config = WTHALIConfigSelector::get_optimal_config(
-    500'000,        // Expected dataset size
-    "mixed",        // Workload: read_heavy, mixed, write_heavy
-    "clustered"     // Optional: data distribution hint
-);
-
-auto index = std::make_unique<HALIv2Index<uint64_t, uint64_t>>(
-    config.compression_level,  // Auto-selected: 0.25
-    config.buffer_size_percent // Auto-selected: 0.005 (0.5%)
-);
-
-std::cout << config.reasoning << std::endl;
-// Output: "Medium dataset (250K-1M): Light compression balances
-//          speed and memory + Mixed workload: Balanced buffer (1%)"
-\end{lstlisting}
-
-\end{frame}
-
-\begin{frame}{Configuration Recommendations Summary}
-
-\textbf{Production Guidelines (Based on 50 Experiments):}
-
-\pause
-
-\vspace{0.5cm}
-
-\begin{block}{By Dataset Size}
-\begin{itemize}
-    \item \textbf{< 250K keys:} compression=0.0, buffer=0.5\%
-    \item \textbf{250K-1M keys:} compression=0.25, buffer=1\% $\leftarrow$ \textcolor{green}{Recommended}
-    \item \textbf{> 1M keys:} compression=0.5, buffer=2\%
-\end{itemize}
-\end{block}
-
-\pause
-
-\begin{block}{By Workload Type}
-\begin{itemize}
-    \item \textbf{Read-Heavy (>90\% reads):} Large buffer (5\%) for caching
-    \item \textbf{Mixed (50/50):} Small buffer (0.5\%) to minimize overhead
-    \item \textbf{Write-Heavy (>50\% writes):} Large buffer (5\%) for batching
-\end{itemize}
-\end{block}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{All experimental data:} See \texttt{EXPERIMENT\_RESULTS.md}
-
-\end{frame}
-
-% ============================================================
-% CONCLUSION
-% ============================================================
-\section{Conclusion}
-
-\begin{frame}{Summary}
-
-\textbf{WT-HALI achieves the best of both worlds:}
-
-\begin{itemize}
-    \item<1-> \textcolor{green}{\checkmark} Memory efficiency of learned indexes (17.25 bytes/key)
-    \item<2-> \textcolor{green}{\checkmark} Write throughput of traditional indexes (14.7M ops/sec)
-    \item<3-> \textcolor{green}{\checkmark} Fast lookups (54.7 ns)
-    \item<4-> \textcolor{green}{\checkmark} 100\% correctness guarantee
-\end{itemize}
-
-\pause[5]
-
-\vspace{0.5cm}
-
-\textbf{Key Innovation:} Hybrid design using learned models where they excel, traditional structures where guarantees matter
-
-\pause
-
-\vspace{0.5cm}
-
-\textbf{Completed in Phase 3:}
-\begin{itemize}
-    \item \textcolor{green}{\checkmark} Systematic hyperparameter optimization (50 experiments)
-    \item \textcolor{green}{\checkmark} Buffer size optimization for different workloads
-    \item \textcolor{green}{\checkmark} Compression level tuning by dataset size
-    \item \textcolor{green}{\checkmark} Automatic configuration selector implementation
-\end{itemize}
-
-\pause
-
-\vspace{0.3cm}
-
-\textbf{Future Work:}
-\begin{itemize}
-    \item Add ALEX baseline comparison
-    \item Large-scale benchmarks (5M-10M keys)
-    \item Real-world SOSD dataset evaluation
-    \item Concurrent WT-HALI with lock-free buffer
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}{Thank You}
-\begin{center}
-\LARGE \textbf{Questions?}
-
-\vspace{1cm}
-
-\large
-\textbf{WT-HALI: Write-Through Hierarchical Adaptive Learned Index}
-
-\vspace{0.5cm}
-
-\normalsize
-Dhruv Joshi\\
-\texttt{jdhruv1503@gmail.com}
-
-\vspace{0.5cm}
-
-GitHub: \texttt{https://github.com/jdhruv1503/HALI}
-
-\vspace{1cm}
-
 \begin{tikzpicture}
-\node[draw, fill=green!10, minimum width=8cm, minimum height=1.5cm, align=center] {
-\textbf{Key Takeaway:}\\
-Hybrid = Use learned models for approximation,\\
-traditional structures for guarantees
+\node[draw, fill=blue!10, minimum width=5cm, minimum height=4cm, align=left, rounded corners, font=\scriptsize] {
+    \textbf{1. Simplicity wins}\\
+    \quad B+Tree: $\sim$1000 LOC\\
+    \quad WT-HALI: 2000+ LOC\\
+    \quad More code $\rightarrow$ more bugs\\[0.15cm]
+    \textbf{2. Worst-case $>$ average-case}\\
+    \quad B+Tree: 1.4$\times$ variance\\
+    \quad WT-HALI: 8$\times$ variance\\
+    \quad Tail latency breaks SLAs\\[0.15cm]
+    \textbf{3. Proven $>$ novel}\\
+    \quad 50+ years of B+Tree\\
+    \quad in every major OS/DB\\
+    \quad Kernel code must be bulletproof
 };
 \end{tikzpicture}
 \end{center}
-\end{frame}
-
-% ============================================================
-% APPENDIX: BACKUP SLIDES
-% ============================================================
-\appendix
-
-\begin{frame}{Backup: Complete Performance Table}
-
-\begin{table}
-\centering
-\tiny
-\begin{tabular}{@{}lrrrrr@{}}
-\toprule
-\textbf{Index} & \textbf{Lookup (ns)} & \textbf{P99 (ns)} & \textbf{Insert (Mops/s)} & \textbf{Memory (B/key)} & \textbf{Build (ms)} \\
-\midrule
-BTree & 17.5 & 21 & 19.1 & 19.20 & 36.1 \\
-HashTable & 158.9 & 511 & 11.1 & 41.78 & 26.1 \\
-ART & 309.9 & 701 & 15.6 & 20.00 & 47.5 \\
-PGM-Index & 117.9 & 431 & 0.09 & 16.00 & 22.1 \\
-RMI & 93.7 & 391 & 0.10 & 16.00 & 68.9 \\
-\rowcolor{green!20}
-\textbf{WT-HALI-Speed} & \textbf{54.7} & \textbf{211} & \textbf{14.7} & \textbf{17.25} & 40.6 \\
-\rowcolor{yellow!20}
-WT-HALI-Balanced & 348.3 & 1042 & 7.1 & 22.50 & 90.0 \\
-\rowcolor{green!20}
-\textbf{WT-HALI-Memory} & \textbf{127.6} & \textbf{420} & \textbf{10.6} & \textbf{19.75} & 89.9 \\
-\bottomrule
-\end{tabular}
-\caption{Read-Heavy Workload, Clustered Dataset, 500K keys}
-\end{table}
-
-\vspace{0.3cm}
-
-\textbf{Key Observations:}
-\begin{itemize}
-    \item WT-HALI-Speed achieves best balance across all metrics
-    \item P99 latency remains reasonable (< 250 ns for Speed/Memory)
-    \item Build time competitive with baseline indexes
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}{Backup: Experimental Setup}
-
-\textbf{Hardware:}
-\begin{itemize}
-    \item ASUS ROG Zephyrus G14 2023 (AMD Ryzen 9 7940HS @ 3.99 GHz)
-    \item 16 cores allocated to Docker
-    \item 7.4 GB RAM
-\end{itemize}
-
-\vspace{0.3cm}
-
-\textbf{Software:}
-\begin{itemize}
-    \item Ubuntu 22.04 LTS (Docker container)
-    \item GCC 11.4.0 with \texttt{-O3 -march=native -DNDEBUG}
-    \item C++17
-\end{itemize}
-
-\vspace{0.3cm}
-
-\textbf{Methodology:}
-\begin{itemize}
-    \item Each benchmark: 500K keys loaded, 100K operations
-    \item 3 workloads: Read-Heavy (95\% find), Write-Heavy (90\% insert), Mixed (50/50)
-    \item 6 datasets: Clustered, Lognormal, Sequential, Uniform, Mixed, Zipfian
-    \item Timing: \texttt{std::chrono::high\_resolution\_clock} (nanosecond precision)
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}{Backup: Validation Results}
-
-\begin{table}
-\centering
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Index} & \textbf{Clustered} & \textbf{Sequential} & \textbf{Uniform} & \textbf{Pass Rate} \\
-\midrule
-BTree & \checkmark & \checkmark & \checkmark & 100\% \\
-HashTable & \checkmark & \checkmark & \checkmark & 100\% \\
-ART & \checkmark & \checkmark & \checkmark & 100\% \\
-PGM-Index & \checkmark & \checkmark & \checkmark & 100\% \\
-RMI & \checkmark & \checkmark & \checkmark & 100\% \\
-\rowcolor{green!30}
-\textbf{WT-HALI-Speed} & \checkmark & \checkmark & \checkmark & \textbf{100\%} \\
-\rowcolor{yellow!20}
-WT-HALI-Balanced & \texttimes & \checkmark & \checkmark & 66\% \\
-\rowcolor{green!30}
-\textbf{WT-HALI-Memory} & \checkmark & \checkmark & \checkmark & \textbf{100\%} \\
-\bottomrule
-\end{tabular}
-\caption{Correctness validation (500K keys per dataset)}
-\end{table}
-
-\vspace{0.3cm}
-
-\textbf{Production Readiness:}
-\begin{itemize}
-    \item WT-HALI-Speed: 100\% correctness, recommended for production
-    \item WT-HALI-Memory: 100\% correctness, memory-optimized variant
-    \item WT-HALI-Balanced: Edge case under investigation
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}{Backup: Next Experiments}
-
-\textbf{Planned Experiments to Find WT-HALI's Sweet Spot:}
-
-\vspace{0.3cm}
-
-\begin{enumerate}
-    \item \textbf{Write-Through Buffer Size Sweep}
-    \begin{itemize}
-        \item Test: 0.5\%, 1\%, 2\%, 5\%, 10\% of main index
-        \item Measure: Lookup latency, insert throughput, memory overhead
-        \item Goal: Find optimal buffer size for each workload
-    \end{itemize}
-
-    \vspace{0.2cm}
-
-    \item \textbf{Compression Level Grid Search}
-    \begin{itemize}
-        \item Test: 0.0, 0.25, 0.5, 0.75, 1.0 across all 6 datasets
-        \item Measure: Full performance profile
-        \item Goal: Identify dataset-specific optimal configurations
-    \end{itemize}
-
-    \vspace{0.2cm}
-
-    \item \textbf{Large-Scale Validation}
-    \begin{itemize}
-        \item Test: 1M, 5M, 10M keys
-        \item Goal: Verify scaling behavior and find breakpoints
-    \end{itemize}
-
-    \vspace{0.2cm}
-
-    \item \textbf{ALEX Comparison}
-    \begin{itemize}
-        \item Integrate ALEX baseline
-        \item Direct comparison on updatable learned index performance
-    \end{itemize}
-\end{enumerate}
-
-\end{frame}
-
-\begin{frame}{Backup: Implementation Details}
-
-\textbf{Key Components:}
-
-\vspace{0.3cm}
-
-\begin{columns}[t]
-\column{0.5\textwidth}
-\textbf{Write-Through Buffer:}
-\begin{itemize}
-    \item Speed: \texttt{phmap::flat\_hash\_map}
-    \item Balanced/Memory: \texttt{art::map}
-    \item Merge trigger: Configurable threshold
-\end{itemize}
-
-\vspace{0.3cm}
-
-\textbf{Binary Search Router:}
-\begin{itemize}
-    \item Disjoint key ranges
-    \item \texttt{std::upper\_bound}
-    \item O(log m) complexity
-\end{itemize}
-
-\column{0.5\textwidth}
-\textbf{Adaptive Experts:}
-\begin{itemize}
-    \item PGM: \texttt{pgm::PGMIndex<uint64\_t, 64>}
-    \item RMI: 2-layer, 100 leaf models
-    \item ART: \texttt{art::map} fallback
-\end{itemize}
-
-\vspace{0.3cm}
-
-\textbf{Expert Selection:}
-\begin{itemize}
-    \item Compute R² during build
-    \item R² > 0.95 → PGM
-    \item 0.80 < R² ≤ 0.95 → RMI
-    \item R² ≤ 0.80 → ART
-\end{itemize}
-
 \end{columns}
 
-\vspace{0.5cm}
+\vspace{0.15cm}
 
-\textbf{Code:} \url{https://github.com/jdhruv1503/HALI}
+\begin{center}
+\colorbox{red!10}{\parbox{11cm}{\centering \footnotesize \textbf{Bottom line:} Hybrid approach improves on pure learned indexes, but cannot match traditional structures for general-purpose use}}
+\end{center}
+\end{frame}
 
+\begin{frame}{Conclusion \& Future Work}
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{What We Built:}
+\begin{itemize}
+    \scriptsize
+    \item Comprehensive benchmark: 6 indexes, 108 experiments
+    \item Novel WT-HALI hybrid architecture
+    \item Identified and fixed critical routing accuracy issue (v1$\rightarrow$v2)
+    \item 100\% correctness validation on all experiments
+    \item Fully reproducible Docker environment
+\end{itemize}
+
+\vspace{0.15cm}
+
+\textbf{Key Contributions:}
+\begin{itemize}
+    \scriptsize
+    \item Demonstrated 5$\times$ write improvement over pure learned
+    \item Showed deterministic routing is essential for indexing
+    \item Quantified memory vs performance trade-offs
+    \item Identified specific use cases for hybrid indexes
+\end{itemize}
+
+\column{0.48\textwidth}
+\textbf{Current Limitations:}
+\begin{itemize}
+    \scriptsize
+    \item Single-threaded implementation only
+    \item Point lookups only (no range query support)
+    \item Tested on synthetic data (500K keys max)
+    \item Still 17$\times$ slower writes than B+Tree
+\end{itemize}
+
+\vspace{0.15cm}
+
+\textbf{Future Work:}
+\begin{itemize}
+    \scriptsize
+    \item Scale testing: 1M-100M keys
+    \item Real-world benchmarks: SOSD, YCSB
+    \item Concurrent WT-HALI with fine-grained locks
+    \item Range query support via sorted buffer
+    \item Hardware acceleration (SIMD binary search)
+\end{itemize}
+\end{columns}
+
+\vspace{0.2cm}
+
+\begin{center}
+\begin{tikzpicture}
+\node[draw, fill=green!15, minimum width=10cm, minimum height=1.3cm, align=center, rounded corners] {
+    \footnotesize \textbf{Key Takeaway}\\[0.05cm]
+    \scriptsize Learned indexes show promise for \textbf{memory-constrained, sequential-data} scenarios.\\
+    For general OS/DB design: \textbf{B+Tree remains the right choice.}
+};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.1cm}
+
+\begin{center}
+\scriptsize
+Dhruv Joshi (2022EE32079), Anushka Chaturvedi (2022EE31763)\\
+ELL405: Operating Systems | IIT Delhi | Fall 2025\\
+\textbf{Code:} \href{https://github.com/jdhruv1503/HALI}{\texttt{github.com/jdhruv1503/HALI}}
+\end{center}
 \end{frame}
 
 \end{document}

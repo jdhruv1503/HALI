@@ -1,0 +1,26 @@
+===========================================
+  WT-HALI: Write-Through HALI
+  Experimental Benchmark Runner
+===========================================
+
+Configuration:
+  Index Type: btree,hash,art,pgm,rmi,wthali
+  Dataset Type: all
+  Dataset Size: 500000 keys
+  Workload Type: all
+  Operations: 100000
+
+Generating dataset...
+Generated 6 dataset(s).
+
+========================================
+Starting Benchmark Experiments
+========================================
+
+========================================
+Benchmark Results Summary
+========================================
+
+Results exported to: results/benchmark_results.csv
+
+Benchmark suite completed successfully!
